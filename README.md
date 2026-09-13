@@ -10,7 +10,7 @@ sh <(wget -O - https://raw.githubusercontent.com/Gavr1024/forkop/main/install.sh
 
 ### Что нового в этом форке
 
-- Forkop нормально работает и с новым sing-box, и со старым.
+- Forkop нормально работает и с новым sing-box 1.14.0, и со старыми.
 
 - Можно полностью исключить устройство из прокси.
 

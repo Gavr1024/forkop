@@ -53,6 +53,7 @@ const RUNTIME_CACHE_FORMAT = int(getenv("FORKOP_RUNTIME_CACHE_FORMAT") || "8");
 const RUNTIME_STABLE_MIN_AGE = int(getenv("FORKOP_RUNTIME_STABLE_MIN_AGE") || "2");
 const SING_BOX_START_STABLE_MIN_AGE = int(getenv("FORKOP_SING_BOX_START_STABLE_MIN_AGE") || "8");
 const SING_BOX_START_VERIFY_TIMEOUT = int(getenv("FORKOP_SING_BOX_START_VERIFY_TIMEOUT") || "10");
+const SING_BOX_RELOAD_VERIFY_TIMEOUT = int(getenv("FORKOP_SING_BOX_RELOAD_VERIFY_TIMEOUT") || "25");
 const NFT_POPULATE_ENABLED_DEFAULT = int(getenv("FORKOP_NFT_POPULATE_ENABLED") || "1");
 
 const TMP_SING_BOX_FOLDER = getenv("TMP_SING_BOX_FOLDER") || constant_value("TMP_SING_BOX_FOLDER", "/tmp/sing-box");
@@ -98,10 +99,12 @@ const VALIDATOR_UC = LIB_DIR + "/config/validator.uc";
 const SERVER_UC = LIB_DIR + "/server/service.uc";
 const NFT_UC = LIB_DIR + "/nft/apply.uc";
 const SINGBOX_UC = LIB_DIR + "/singbox/runtime.uc";
+const XRAY_UC = LIB_DIR + "/xray/runtime.uc";
 const PRIORITY_UC = LIB_DIR + "/singbox/priority.uc";
 const DNS_FAILOVER_UC = LIB_DIR + "/singbox/dns_failover.uc";
 const SUBSCRIPTION_CACHE_UC = LIB_DIR + "/subscription/cache.uc";
 const UPDATES_UC = LIB_DIR + "/components/updates.uc";
+const SLOTS_UC = LIB_DIR + "/config/slots.uc";
 const STATE_UC = LIB_DIR + "/service/state.uc";
 const RELOAD_UC = LIB_DIR + "/service/reload.uc";
 const UI_UC = LIB_DIR + "/service/ui.uc";
@@ -504,6 +507,44 @@ function setting_bool(name, fallback) {
     return bool_text(value);
 }
 
+function valid_netif_name(name) {
+    return match(as_string(name), /^[A-Za-z][A-Za-z0-9_]*$/) != null;
+}
+
+function schedule_interface_restarts() {
+    if (!setting_bool("restart_interfaces_after_start", false))
+        return;
+
+    let raw = config_get(CONFIG_NAME + ".settings.restart_interfaces", "");
+    let delay = int(config_get(CONFIG_NAME + ".settings.restart_interfaces_delay", "5"));
+    if (delay < 0)
+        delay = 0;
+    if (delay > 300)
+        delay = 300;
+
+    let names = [];
+    for (let item in split(replace(as_string(raw), /,/g, " "), /[ \t]+/)) {
+        item = trim(item);
+        if (item == "" || item == "loopback" || item == "lo")
+            continue;
+        if (!valid_netif_name(item))
+            continue;
+        push(names, item);
+    }
+    if (length(names) == 0) {
+        log_message("Interface restart after start is enabled, but no interfaces are selected", "warn");
+        return;
+    }
+
+    let command = "( sleep " + as_string(delay);
+    for (let name in names)
+        command += "; /sbin/ifup " + shell_quote(name);
+    command += " ) >/dev/null 2>&1 &";
+
+    log_message("Restarting interfaces " + join(", ", names) + " in " + delay + "s after start", "info");
+    command_status(command);
+}
+
 function dns_apply_status(args) {
     return module_status(DNS_APPLY_UC, args);
 }
@@ -620,6 +661,15 @@ function nft_populate_runtime_sets() {
     ]);
 }
 
+function nft_sync_router_output_intercept() {
+    return module_status(NFT_UC, [
+        "nft-sync-router-output-intercept",
+        NFT_TABLE_NAME,
+        NFT_LOCALV4_SET_NAME,
+        NFT_OUTBOUND_MARK
+    ]);
+}
+
 function singbox_init_config() {
     let result = module_capture(SINGBOX_UC, [
         "init-config",
@@ -632,6 +682,22 @@ function singbox_init_config() {
         subscription_deferred_sections = trim(result.output);
         subscription_caches_prepared = "1";
     }
+    return result.status;
+}
+
+function xray_init_config() {
+    if (fs.stat(XRAY_UC) == null)
+        return 0;
+
+    let result = module_capture(XRAY_UC, [ "init-config" ]);
+    if (result.status == 0)
+        return 0;
+
+    let reason = trim(result.output);
+    log_message(
+        "Failed to prepare Xray sidecar" + (reason != "" ? ": " + reason : "") + ". Aborted.",
+        "fatal"
+    );
     return result.status;
 }
 
@@ -706,6 +772,11 @@ function start_main() {
     if (status != 0)
         return status;
 
+    log_message("Preparing Xray sidecar", "debug");
+    status = xray_init_config();
+    if (status != 0)
+        return status;
+
     status = singbox_init_config();
     if (status != 0)
         return status;
@@ -715,6 +786,10 @@ function start_main() {
         return status;
 
     module_success(BYEDPI_UC, [ "start-runtime" ]);
+    if (!module_success(XRAY_UC, [ "start-runtime" ])) {
+        log_message("Failed to start Xray sidecar. Aborted.", "fatal");
+        return 1;
+    }
 
     if (!command_success_from_args([ "/etc/init.d/sing-box", "start" ])) {
         log_message("Failed to start sing-box. Aborted.", "fatal");
@@ -734,6 +809,12 @@ function start_main() {
         return status;
     }
 
+    status = nft_sync_router_output_intercept();
+    if (status != 0) {
+        log_message("Failed to intercept router traffic. Aborted.", "fatal");
+        return status;
+    }
+
     status = module_status(PRIORITY_UC, [ "start-runtime" ]);
     if (status != 0) {
         log_message("Failed to start Priority runtime. Aborted.", "fatal");
@@ -749,13 +830,21 @@ function start_main() {
     module_success(ZAPRET2_UC, [ "start-runtime" ]);
 
     module_background(UPDATES_UC, [ "list-update" ]);
+    module_success(SLOTS_UC, [ "sync-cron-from-uci" ]);
     return 0;
 }
 
 function start_impl() {
+    module_success(SLOTS_UC, [ "prepare-boot-slot" ]);
     let status = start_main();
-    if (status != 0)
-        return status;
+    if (status != 0) {
+        if (module_status(SLOTS_UC, [ "try-fallback-slot" ]) == 0) {
+            log_message("Start failed with the current slot; retrying with the other saved config slot", "warn");
+            status = start_main();
+        }
+        if (status != 0)
+            return status;
+    }
 
     if (!setting_bool("dont_touch_dhcp", false)) {
         status = dnsmasq_configure(false);
@@ -791,6 +880,7 @@ function start_impl() {
     }
 
     module_background(DIAGNOSTICS_UC, [ "get-system-info" ]);
+    schedule_interface_restarts();
     return 0;
 }
 
@@ -825,6 +915,8 @@ function stop_main() {
     let sing_box_status = command_status_from_args([ "/etc/init.d/sing-box", "stop" ]);
     if (sing_box_status != 0)
         status = sing_box_status;
+
+    module_success(XRAY_UC, [ "stop-runtime" ]);
 
     return status;
 }
@@ -1224,6 +1316,13 @@ function reload(reason) {
         let sing_box_pid_result = module_capture(STATE_UC, [ "sing-box-service-runtime-pid" ]);
         let sing_box_pid_before = sing_box_pid_result.status == 0 ? trim(sing_box_pid_result.output) : "";
         nft_populate_enabled = plan.needs_nft_rebuild == 1 ? 1 : 0;
+        status = xray_init_config();
+        if (status != 0)
+            return abort_reload(status, true);
+        if (!module_success(XRAY_UC, [ "reload-runtime" ])) {
+            log_message("Failed to reload Xray sidecar. Aborted.", "fatal");
+            return abort_reload(1, true);
+        }
         status = singbox_init_config();
         if (status != 0)
             return abort_reload(status, true);
@@ -1243,12 +1342,11 @@ function reload(reason) {
             NFT_TABLE_NAME,
             NFT_FAKEIP_MARK,
             as_string(SING_BOX_START_STABLE_MIN_AGE),
-            as_string(SING_BOX_START_VERIFY_TIMEOUT)
+            as_string(SING_BOX_RELOAD_VERIFY_TIMEOUT)
         ]);
         if (status != 0) {
-            log_message("Reload verification failed after sing-box was reloaded; stopping Forkop runtime", "fatal");
-            cleanup_failed_runtime();
-            return status;
+            log_message("Reload verification failed after sing-box was reloaded; restarting Forkop runtime", "warn");
+            return restart_runtime_for_reload();
         }
         status = module_status(PRIORITY_UC, [ "start-runtime" ]);
         if (status != 0) {
@@ -1267,6 +1365,15 @@ function reload(reason) {
         status = nft_populate_runtime_sets();
         if (status != 0)
             return abort_reload(status, true);
+    }
+
+    if (plan.needs_nft_rebuild == 1 || plan.needs_sing_box_reload == 1) {
+        status = nft_sync_router_output_intercept();
+        if (status != 0) {
+            log_message("Failed to intercept router traffic after reload. Aborted.", "fatal");
+            cleanup_failed_runtime();
+            return status;
+        }
     }
 
     if (plan.needs_zapret_restart == 1)

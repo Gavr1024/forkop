@@ -21,6 +21,14 @@ for (const option of ["russia_inside", "russia_outside", "ukraine_inside"]) {
   }
 }
 
+if (
+  !section.includes("form.MultiValue") ||
+  !section.includes('"community_lists"') ||
+  !section.includes("Tick every predefined list you need")
+) {
+  fail("built-in rule sets must use a multi-select checkbox dropdown");
+}
+
 for (const removed of [
   "REGIONAL_OPTIONS",
   "builtInRulesetOption.onchange",

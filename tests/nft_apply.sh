@@ -92,6 +92,17 @@ if [ "$#" -eq 4 ] && [ "$1" = "list" ] && [ "$2" = "table" ] &&
     exit 1
   fi
 fi
+
+if [ "$1" = "flush" ] && [ "$2" = "chain" ] && [ "$5" = "output_redirect" ] &&
+  [ "${NFT_OUTPUT_REDIRECT_EXISTS:-0}" != "1" ]; then
+  printf 'Error: Could not process rule: No such file or directory\n' >&2
+  exit 1
+fi
+if [ "$1" = "delete" ] && [ "$2" = "chain" ] && [ "$5" = "output_redirect" ] &&
+  [ "${NFT_OUTPUT_REDIRECT_EXISTS:-0}" != "1" ]; then
+  printf 'Error: Could not process rule: No such file or directory\n' >&2
+  exit 1
+fi
 NFT
 chmod 0755 "$WORK_DIR/bin/nft"
 
@@ -245,6 +256,24 @@ assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tm
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tip6\tdaddr\t@localv6\tip6\tdaddr\t!=\tfc00::/18\treturn' "runtime output local6 return preserves FakeIP6 capture"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tjump\tpriority_output_rules' "runtime priority output jump"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle\tudp\tdport\t123\treturn' "runtime ntp exclusion"
+assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle_output\tudp\tdport\t123\treturn' "runtime output ntp exclusion"
+if grep -Fq $'output_redirect' "$NFT_LOG" || grep -Fq $'dns_redirect_output' "$NFT_LOG"; then
+  fail "OUTPUT redirect chain must not exist when router traffic intercept is off"
+fi
+
+: > "$NFT_LOG"
+nft_ucode nft-enable-router-output-intercept ForkopTable localv4 0x00200000 1
+assert_contains "$NFT_LOG" $'nft\tadd\tchain\tinet\tForkopTable\toutput_redirect\t{ type nat hook output priority -100; policy accept; }' "router output intercept chain"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\toutput_redirect\tmeta\tl4proto\ticmp\treturn' "router output intercept skips ICMP"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\toutput_redirect\ttcp\tdport\t53\treturn' "router output intercept skips DNS"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\toutput_redirect\tmeta\tmark\t0x00200000\treturn' "router output intercept skips outbound mark"
+assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\toutput_redirect\tmeta\tl4proto\ttcp\tcounter\tredirect\tto\t:1604' "router output intercept redirects TCP"
+if grep -Fq $'network' "$NFT_LOG"; then
+  fail "router output intercept must not mention inbound network field"
+fi
+if grep -Fq $'0.0.0.0:1604' "$NFT_LOG" || grep -Fq $'redirect6-in' "$NFT_LOG"; then
+  fail "router output intercept must not bind 0.0.0.0:1604 or add an IPv6 redirect inbound"
+fi
 
 cat >"$WORK_DIR/runtime-base-uci.state" <<'EOF_UCI'
 forkop.settings=settings
@@ -257,6 +286,7 @@ FORKOP_UCI_STATE_FILE="$WORK_DIR/runtime-base-uci.state" \
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_interfaces\t{ br-lan }' "runtime base from UCI br-lan interface"
 assert_contains "$NFT_LOG" $'nft\tadd\telement\tinet\tForkopTable\tforkop_interfaces\t{ tun0 }' "runtime base from UCI tun0 interface"
 assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle\tudp\tdport\t123\treturn' "runtime base from UCI ntp exclusion"
+assert_contains "$NFT_LOG" $'nft\tinsert\trule\tinet\tForkopTable\tmangle_output\tudp\tdport\t123\treturn' "runtime base from UCI output ntp exclusion"
 
 : > "$NFT_LOG"
 nft_ucode nft-create-runtime-output-rules ForkopTable localv4 forkop_subnets forkop_ports forkop_ip_ports 0x00100000 198.18.0.0/15
@@ -266,6 +296,9 @@ assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\ti
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tip6\tdaddr\t.\ttcp\tdport\t@forkop_ip6_ports\tmeta\tmark\tset\t0x00100000\tcounter' "runtime output ip6-port tcp"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\ttcp\tdport\t@forkop_ports\tmeta\tmark\tset\t0x00100000\tcounter' "runtime output port tcp"
 assert_contains "$NFT_LOG" $'nft\tadd\trule\tinet\tForkopTable\tmangle_output\tip\tdaddr\t198.18.0.0/15\tmeta\tl4proto\tudp\tmeta\tmark\tset\t0x00100000\tcounter' "runtime output fakeip udp"
+if grep -Fq $'mangle_output\tmeta\tl4proto\ttcp\tmeta\tmark\tset' "$NFT_LOG"; then
+  fail "output catch-all TCP mark must stay off"
+fi
 
 : > "$NFT_LOG"
 if NFT_LIST_TABLE_FAIL=1 nft_ucode nft-table-present-fixture ForkopTable 2>"$WORK_DIR/nft-table-present.err"; then
@@ -661,6 +694,12 @@ cat >"$WORK_DIR/signature-expected.txt" <<'EOF_EXPECTED'
 br-lan tun0
 [settings.exclude_ntp]
 1
+[settings.exclude_bittorrent]
+0
+[settings.routing_excluded_ips]
+
+[settings.route_router_traffic]
+0
 [rule.text_rule.action]
 bypass
 [rule.text_rule.ip_cidr]
@@ -731,6 +770,12 @@ cat >"$WORK_DIR/signature-uci-expected.txt" <<'EOF_EXPECTED'
 br-lan tun0
 [settings.exclude_ntp]
 1
+[settings.exclude_bittorrent]
+0
+[settings.routing_excluded_ips]
+
+[settings.route_router_traffic]
+0
 [rule.enabled.action]
 bypass
 [rule.enabled.ip_cidr]
@@ -764,6 +809,12 @@ cat >"$WORK_DIR/signature-defaults-expected.txt" <<'EOF_EXPECTED'
 [settings.source_network_interfaces]
 br-lan
 [settings.exclude_ntp]
+0
+[settings.exclude_bittorrent]
+0
+[settings.routing_excluded_ips]
+
+[settings.route_router_traffic]
 0
 EOF_EXPECTED
 expected_signature="$(md5sum "$WORK_DIR/signature-defaults-expected.txt" | awk '{print $1}')"

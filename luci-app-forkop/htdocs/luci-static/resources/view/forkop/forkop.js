@@ -27,6 +27,9 @@
 // Updates
 "require view.forkop.updates as updates";
 
+// Config slots
+"require view.forkop.slots as slots";
+
 const UCI_PACKAGE = main.FORKOP_UCI_PACKAGE;
 
 function renderSectionAdd(sectionRef, extra_class) {
@@ -108,6 +111,7 @@ const EntryPoint = {
       zapretInstalled: false,
       zapret2Installed: false,
       byedpiInstalled: false,
+      xrayInstalled: false,
       serverInboundsEnabledCount: -1,
     };
     let uiCapabilitiesPromise = null;
@@ -125,6 +129,7 @@ const EntryPoint = {
               zapretInstalled: uiCapabilities.zapretInstalled,
               zapret2Installed: uiCapabilities.zapret2Installed,
               byedpiInstalled: uiCapabilities.byedpiInstalled,
+              xrayInstalled: uiCapabilities.xrayInstalled,
             },
           }),
         );
@@ -142,6 +147,7 @@ const EntryPoint = {
             zapret_installed: uiCapabilities.zapretInstalled ? 1 : 0,
             zapret2_installed: uiCapabilities.zapret2Installed ? 1 : 0,
             byedpi_installed: uiCapabilities.byedpiInstalled ? 1 : 0,
+            xray_installed: uiCapabilities.xrayInstalled ? 1 : 0,
             server_inbounds_enabled_count:
               uiCapabilities.serverInboundsEnabledCount,
             zapret_version: uiCapabilities.zapretInstalled
@@ -152,6 +158,9 @@ const EntryPoint = {
               : "not installed",
             byedpi_version: uiCapabilities.byedpiInstalled
               ? currentSystemInfo.byedpi_version
+              : "not installed",
+            xray_version: uiCapabilities.xrayInstalled
+              ? currentSystemInfo.xray_version
               : "not installed",
           },
         });
@@ -176,6 +185,9 @@ const EntryPoint = {
       );
       uiCapabilities.byedpiInstalled = Boolean(
         Number(data?.byedpi_installed) === 1,
+      );
+      uiCapabilities.xrayInstalled = Boolean(
+        Number(data?.xray_installed) === 1,
       );
       const serverInboundsEnabledCount =
         typeof data?.server_inbounds_enabled_count !== "undefined"
@@ -429,6 +441,18 @@ const EntryPoint = {
       return ["settings"];
     };
     settings.createSettingsContent(settingsSection, uiCapabilities);
+
+    const slotsSection = forkopMap.section(
+      form.TypedSection,
+      "slots",
+      _("Config slots"),
+    );
+    slotsSection.anonymous = true;
+    slotsSection.addremove = false;
+    slotsSection.cfgsections = function () {
+      return ["slots"];
+    };
+    slots.createSlotsContent(slotsSection);
 
     const diagnosticSection = forkopMap.section(
       form.TypedSection,

@@ -14,6 +14,7 @@ describe('diagnostic store provider checks', () => {
     expect(checks.map((check) => check.code)).toEqual([
       DIAGNOSTICS_CHECKS.DNS,
       DIAGNOSTICS_CHECKS.SINGBOX,
+      DIAGNOSTICS_CHECKS.XRAY,
       DIAGNOSTICS_CHECKS.NFT,
       DIAGNOSTICS_CHECKS.ZAPRET,
       DIAGNOSTICS_CHECKS.ZAPRET2,
@@ -52,5 +53,34 @@ describe('diagnostic store provider checks', () => {
     expect(checks.map((check) => check.code)).toContain(
       DIAGNOSTICS_CHECKS.INBOUNDS,
     );
+  });
+
+  it('always includes Xray after Sing-box', () => {
+    const checks = getDiagnosticsChecks('Pending');
+
+    expect(checks.map((check) => check.code)).toEqual([
+      DIAGNOSTICS_CHECKS.DNS,
+      DIAGNOSTICS_CHECKS.SINGBOX,
+      DIAGNOSTICS_CHECKS.XRAY,
+      DIAGNOSTICS_CHECKS.NFT,
+      DIAGNOSTICS_CHECKS.OUTBOUNDS,
+      DIAGNOSTICS_CHECKS.FAKEIP,
+    ]);
+  });
+
+  it('adds Xray after Sing-box when the core is installed', () => {
+    const checks = getDiagnosticsChecks('Pending', {
+      includeXray: true,
+      includeInbounds: false,
+    });
+
+    expect(checks.map((check) => check.code)).toEqual([
+      DIAGNOSTICS_CHECKS.DNS,
+      DIAGNOSTICS_CHECKS.SINGBOX,
+      DIAGNOSTICS_CHECKS.XRAY,
+      DIAGNOSTICS_CHECKS.NFT,
+      DIAGNOSTICS_CHECKS.OUTBOUNDS,
+      DIAGNOSTICS_CHECKS.FAKEIP,
+    ]);
   });
 });

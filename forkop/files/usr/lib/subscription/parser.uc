@@ -606,7 +606,12 @@ function add_tls(url, security, default_tls) {
             tls.reality.public_key = public_key;
         if (short_id != "")
             tls.reality.short_id = short_id;
+        let spider = as_string(query.spx || query.spiderX || query.spider_x || "");
+        if (spider != "")
+            tls.reality.spider_x = spider;
     }
+    if ((query.ech || "") != "")
+        tls.ech = { enabled: true, config: [ as_string(query.ech) ] };
 
     return [tls, true];
 }
@@ -614,7 +619,7 @@ function add_tls(url, security, default_tls) {
 function add_transport(url) {
     let query = object_or_empty(url.query);
     let transport = query.type || "";
-    if (transport == "" || transport == "tcp")
+    if (transport == "" || transport == "tcp" || transport == "raw")
         return null;
 
     let path = query.path || "";
@@ -747,7 +752,7 @@ function normalize_vless_encryption(value) {
 }
 
 function vless_flow_supported(flow) {
-    return flow == null || flow == "" || flow == "xtls-rprx-vision";
+    return flow == null || flow == "" || flow == "xtls-rprx-vision" || flow == "xtls-rprx-vision-udp443";
 }
 
 function process_vless(raw, url) {
@@ -960,6 +965,11 @@ function process_hysteria2(raw, url) {
         tls.insecure = true;
     if ((url.query.alpn || "") != "")
         tls.alpn = split_csv(url.query.alpn);
+    let fingerprint = normalize_utls_fingerprint(url.query.fp || "");
+    if (fingerprint != "")
+        tls.utls = { enabled: true, fingerprint: fingerprint };
+    if ((url.query.ech || "") != "")
+        tls.ech = { enabled: true, config: [ as_string(url.query.ech) ] };
 
     let outbound = {
         type: "hysteria2",
@@ -2933,6 +2943,7 @@ function parse_subscription_source_entry_tsv(entry) {
 
 function module_exports() {
     return {
+        parse_share_link,
         parse_subscription_source_entry,
         validate_subscription,
         normalize_content_validated,

@@ -55,6 +55,8 @@ const SINGBOX_RUNTIME_UC = LIB_DIR + "/singbox/runtime.uc";
 const ZAPRET_RUNTIME_UC = LIB_DIR + "/providers/zapret/runtime.uc";
 const ZAPRET2_RUNTIME_UC = LIB_DIR + "/providers/zapret2/runtime.uc";
 const BYEDPI_RUNTIME_UC = LIB_DIR + "/providers/byedpi/runtime.uc";
+const XRAY_RUNTIME_UC = LIB_DIR + "/xray/runtime.uc";
+const XRAY_CONFIG = getenv("XRAY_CONFIG") || "/etc/xray/config.json";
 const ZAPRET_VALIDATOR_UC = LIB_DIR + "/providers/zapret/validator.uc";
 const ZAPRET2_VALIDATOR_UC = LIB_DIR + "/providers/zapret2/validator.uc";
 
@@ -900,6 +902,20 @@ function show_sing_box_config(visibility) {
     return 0;
 }
 
+function show_xray_config(visibility) {
+    visibility = as_string(visibility || "masked");
+    nolog("Current Xray configuration:");
+    if (!file_exists(XRAY_CONFIG)) {
+        nolog("Configuration file not found");
+        return 1;
+    }
+    if (visibility == "raw")
+        print(as_string(fs.readfile(XRAY_CONFIG)));
+    else
+        print(status_output([ "mask-xray-config", XRAY_CONFIG ], null));
+    return 0;
+}
+
 function show_config(visibility) {
     visibility = as_string(visibility || "masked");
     if (!file_exists(FORKOP_CONFIG)) {
@@ -1070,6 +1086,13 @@ function build_system_info() {
     let zapret2_version = zapret2_installed ? provider_version(ZAPRET2_RUNTIME_UC) : "not installed";
     let byedpi_installed = provider_installed(BYEDPI_RUNTIME_UC) ? 1 : 0;
     let byedpi_version = byedpi_installed ? provider_version(BYEDPI_RUNTIME_UC) : "not installed";
+    let xray_installed = file_executable("/usr/bin/xray") ? 1 : 0;
+    let xray_version = "not installed";
+    if (xray_installed) {
+        xray_version = replace(module_output(XRAY_RUNTIME_UC, [ "version" ]), /[\r\n]+$/g, "");
+        if (xray_version == "")
+            xray_version = "unknown";
+    }
     let device_model = first_line_value("/tmp/sysinfo/model", "unknown");
 
     return {
@@ -1087,6 +1110,8 @@ function build_system_info() {
         zapret2_installed,
         byedpi_version,
         byedpi_installed,
+        xray_version,
+        xray_installed,
         openwrt_version: openwrt_release(),
         device_model,
         generated_at: int(clock()[0])
@@ -1536,6 +1561,10 @@ function check_sing_box() {
     return 0;
 }
 
+function check_xray() {
+    return module_passthrough(XRAY_RUNTIME_UC, [ "check" ]);
+}
+
 function check_fakeip() {
     let fakeip_address = "";
     let fakeip6_address = "";
@@ -1813,6 +1842,14 @@ function global_check(arg1, arg2) {
     else
         print_global("❌ Failed to get sing-box info");
 
+    print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    print_global("📦 Xray status");
+    let xray_check_json = command_capture(command_from_args(module_args(LIB_DIR + "/diagnostics/runtime.uc", [ "check-xray" ]))).output;
+    if (xray_check_json != "")
+        render_or_fail([ "global-xray-check" ], xray_check_json, "❌ Failed to parse xray info", [ 0 ]);
+    else
+        print_global("❌ Failed to get xray info");
+
     print_global("---------------------------");
     print_global("Inbounds checks");
     let inbounds_check_json = command_capture(command_from_args(module_args(LIB_DIR + "/diagnostics/runtime.uc", [ "check-inbounds" ]))).output;
@@ -1912,6 +1949,8 @@ else if (mode == "check-nft-rules")
     exit(check_nft_rules());
 else if (mode == "check-sing-box")
     exit(check_sing_box());
+else if (mode == "check-xray")
+    exit(check_xray());
 else if (mode == "sing-box-standard-ports-listening-fixture")
     sing_box_standard_ports_listening_fixture();
 else if (mode == "check-inbounds-config")
@@ -1942,6 +1981,8 @@ else if (mode == "show-version")
     exit(show_version());
 else if (mode == "show-sing-box-config")
     exit(show_sing_box_config(ARGV[1] || "masked"));
+else if (mode == "show-xray-config")
+    exit(show_xray_config(ARGV[1] || "masked"));
 else if (mode == "show-sing-box-version")
     exit(show_sing_box_version());
 else if (mode == "get-status")
@@ -1958,6 +1999,8 @@ else if (mode == "get-zapret2-status")
     exit(module_passthrough(ZAPRET2_RUNTIME_UC, [ "status" ]));
 else if (mode == "get-byedpi-status")
     exit(module_passthrough(BYEDPI_RUNTIME_UC, [ "status" ]));
+else if (mode == "get-xray-status")
+    exit(module_passthrough(XRAY_RUNTIME_UC, [ "status" ]));
 else if (mode == "get-system-info")
     exit(get_system_info());
 else if (mode == "get-server-capabilities")

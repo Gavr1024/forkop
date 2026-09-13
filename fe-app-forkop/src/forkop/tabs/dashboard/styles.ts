@@ -109,6 +109,10 @@ export const styles = `
     color: var(--error-color-medium, red);
 }
 
+.fkp_dashboard-page__widgets-section__item__row--warning .fkp_dashboard-page__widgets-section__item__row__value {
+    color: var(--warn-color-medium, orange);
+}
+
 .fkp_dashboard-page__widgets-section__item__row__key {}
 
 .fkp_dashboard-page__widgets-section__item__row__value {}
@@ -133,6 +137,33 @@ export const styles = `
     font-weight: 700;
     min-width: 0;
     overflow-wrap: anywhere;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.fkp_dashboard-page__core-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.fkp_dashboard-page__core-badge--xray {
+    color: var(--primary-color-medium, #7c5cbf);
+}
+
+.fkp_dashboard-page__core-badge--sing-box {
+    color: var(--success-color-medium, #2a8a4a);
 }
 
 .fkp_dashboard-page__outbound-section__title-section__actions {

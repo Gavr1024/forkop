@@ -891,6 +891,8 @@ function nft_runtime_signature_body(settings, sections) {
 
     body = signature_add_value(body, "settings.source_network_interfaces", option(settings, "source_network_interfaces", "br-lan"));
     body = signature_add_value(body, "settings.exclude_ntp", bool_option(settings, "exclude_ntp", false) ? "1" : "0");
+    body = signature_add_value(body, "settings.exclude_bittorrent", bool_option(settings, "exclude_bittorrent", false) ? "1" : "0");
+    body = signature_add_value(body, "settings.routing_excluded_ips", option(settings, "routing_excluded_ips", ""));
 
     for (let section in sections) {
         section = object_or_empty(section);
@@ -904,6 +906,7 @@ function nft_runtime_signature_body(settings, sections) {
             body = signature_add_value(body, "rule." + name + ".source_ip_cidr", section_rule_condition_csv(section, "source_ip_cidr", "subnets"));
             body = signature_add_value(body, "rule." + name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
             body = signature_add_value(body, "rule." + name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
+            body = signature_add_value(body, "rule." + name + ".excluded_source_ips", option(section, "excluded_source_ips", ""));
             continue;
         }
         body = signature_add_value(body, "rule." + name + ".ip_cidr", section_rule_condition_csv(section, "ip_cidr", "subnets"));
@@ -911,6 +914,7 @@ function nft_runtime_signature_body(settings, sections) {
         body = signature_add_value(body, "rule." + name + ".source_aware_dns", connections.has_dns_matchers(section) ? "1" : "0");
         body = signature_add_value(body, "rule." + name + ".ports", section_rule_ports_csv(section));
         body = signature_add_value(body, "rule." + name + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
+        body = signature_add_value(body, "rule." + name + ".excluded_source_ips", option(section, "excluded_source_ips", ""));
         body = signature_add_value(body, "rule." + name + ".community_subnet_lists", rule_config.filter_community_subnet_lists_value(connections.community_lists_value(section)));
         body = signature_add_value(body, "rule." + name + ".remote_subnet_lists", option(section, "remote_subnet_lists", ""));
         body = signature_add_value(body, "rule." + name + ".rule_set_with_subnets", connections.rule_sets_with_subnets_value(section));
@@ -1292,6 +1296,7 @@ function append_sing_box_rule_signature_body(body, section, sections) {
     if (action != "dns")
         body = signature_add_value(body, prefix + ".ports", section_rule_ports_csv(section));
     body = signature_add_value(body, prefix + ".fully_routed_ips", option(section, "fully_routed_ips", ""));
+    body = signature_add_value(body, prefix + ".excluded_source_ips", option(section, "excluded_source_ips", ""));
     body = signature_add_value(body, prefix + ".community_lists", connections.community_lists_value(section));
     body = signature_add_value(body, prefix + ".rule_set", connections.rule_sets_value(section));
     if (action != "dns")
@@ -1418,10 +1423,14 @@ function sing_box_signature_body(settings, sections, servers, mwan3_active) {
 
     body = signature_add_value(body, "settings.download_lists_via_proxy", bool_option_value(settings, "download_lists_via_proxy", false));
     body = signature_add_value(body, "settings.download_components_via_proxy", bool_option_value(settings, "download_components_via_proxy", false));
+    body = signature_add_value(body, "settings.persist_lists_locally", bool_option_value(settings, "persist_lists_locally", false));
     if (download_via_proxy_enabled(settings, "lists"))
         body = signature_add_value(body, "settings.download_lists_via_proxy_section", option(settings, "download_lists_via_proxy_section", ""));
     if (download_via_proxy_enabled(settings, "components"))
         body = signature_add_value(body, "settings.download_components_via_proxy_section", option(settings, "download_components_via_proxy_section", ""));
+    body = signature_add_value(body, "settings.route_router_traffic", bool_option_value(settings, "route_router_traffic", false));
+    if (bool_option(settings, "route_router_traffic", false))
+        body = signature_add_value(body, "settings.route_router_traffic_section", option(settings, "route_router_traffic_section", ""));
 
     for (let section in sections)
         body = append_sing_box_rule_signature_body(body, object_or_empty(section), sections);

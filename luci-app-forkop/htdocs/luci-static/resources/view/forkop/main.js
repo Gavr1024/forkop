@@ -999,6 +999,12 @@ var DNS_SERVER_OPTIONS = {
   "1.1.1.1": "1.1.1.1 (Cloudflare)",
   "8.8.8.8": "8.8.8.8 (Google)",
   "9.9.9.9": "9.9.9.9 (Quad9)",
+  "77.88.8.8": "77.88.8.8 (Yandex DNS)",
+  "77.88.8.1": "77.88.8.1 (Yandex DNS)",
+  "208.67.222.222": "208.67.222.222 (OpenDNS)",
+  "208.67.220.220": "208.67.220.220 (OpenDNS)",
+  "223.5.5.5": "223.5.5.5 (AliDNS)",
+  "223.6.6.6": "223.6.6.6 (AliDNS)",
   "dns.adguard-dns.com": "dns.adguard-dns.com (AdGuard Default)",
   "unfiltered.adguard-dns.com": "unfiltered.adguard-dns.com (AdGuard Unfiltered)",
   "family.adguard-dns.com": "family.adguard-dns.com (AdGuard Family)"
@@ -1011,7 +1017,11 @@ var BOOTSTRAP_DNS_SERVER_OPTIONS = {
   "8.8.8.8": "8.8.8.8 (Google DNS)",
   "8.8.4.4": "8.8.4.4 (Google DNS)",
   "9.9.9.9": "9.9.9.9 (Quad9 DNS)",
-  "9.9.9.11": "9.9.9.11 (Quad9 DNS)"
+  "9.9.9.11": "9.9.9.11 (Quad9 DNS)",
+  "208.67.222.222": "208.67.222.222 (OpenDNS)",
+  "208.67.220.220": "208.67.220.220 (OpenDNS)",
+  "223.5.5.5": "223.5.5.5 (AliDNS)",
+  "223.6.6.6": "223.6.6.6 (AliDNS)"
 };
 var COMMAND_TIMEOUT = 1e4;
 
@@ -1790,6 +1800,17 @@ function renderLoadingState() {
 function isValidHttpUrl(url) {
   return Boolean(url && /^https?:\/\/\S+$/i.test(url));
 }
+function renderCoreBadge(core) {
+  const kind = core === "xray" ? "xray" : "sing-box";
+  return E(
+    "span",
+    {
+      class: `fkp_dashboard-page__core-badge fkp_dashboard-page__core-badge--${kind}`,
+      title: _("Core")
+    },
+    kind === "xray" ? "Xray" : "sing-box"
+  );
+}
 function formatBytes(value) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     return void 0;
@@ -2088,7 +2109,7 @@ function renderDefaultState({
         {
           class: "fkp_dashboard-page__outbound-section__title-section__title"
         },
-        section.displayName
+        [section.displayName, renderCoreBadge(section.proxyCore)]
       ),
       E(
         "div",
@@ -2430,6 +2451,7 @@ var Forkop;
     AvailableMethods2["CHECK_ZAPRET_RUNTIME"] = "check_zapret_runtime";
     AvailableMethods2["CHECK_ZAPRET2_RUNTIME"] = "check_zapret2_runtime";
     AvailableMethods2["CHECK_BYEDPI_RUNTIME"] = "check_byedpi_runtime";
+    AvailableMethods2["CHECK_XRAY"] = "check_xray";
     AvailableMethods2["CHECK_INBOUNDS_CONFIG"] = "check_inbounds_config";
     AvailableMethods2["GET_STATUS"] = "get_status";
     AvailableMethods2["GET_OUTBOUND_METADATA"] = "get_outbound_metadata";
@@ -2440,11 +2462,13 @@ var Forkop;
     AvailableMethods2["GET_ZAPRET_STATUS"] = "get_zapret_status";
     AvailableMethods2["GET_ZAPRET2_STATUS"] = "get_zapret2_status";
     AvailableMethods2["GET_BYEDPI_STATUS"] = "get_byedpi_status";
+    AvailableMethods2["GET_XRAY_STATUS"] = "get_xray_status";
     AvailableMethods2["CLASH_API"] = "clash_api";
     AvailableMethods2["ENABLE"] = "enable";
     AvailableMethods2["DISABLE"] = "disable";
     AvailableMethods2["GLOBAL_CHECK"] = "global_check";
     AvailableMethods2["SHOW_SING_BOX_CONFIG"] = "show_sing_box_config";
+    AvailableMethods2["SHOW_XRAY_CONFIG"] = "show_xray_config";
     AvailableMethods2["CHECK_LOGS"] = "check_logs";
     AvailableMethods2["CHECK_SING_BOX_LOGS"] = "check_sing_box_logs";
     AvailableMethods2["GET_SYSTEM_INFO"] = "get_system_info";
@@ -2649,6 +2673,7 @@ var ForkopShellMethods = {
   checkByedpiRuntime: async () => callBaseMethod(
     Forkop.AvailableMethods.CHECK_BYEDPI_RUNTIME
   ),
+  checkXray: async () => callBaseMethod(Forkop.AvailableMethods.CHECK_XRAY),
   checkInboundsConfig: async () => callBaseMethod(
     Forkop.AvailableMethods.CHECK_INBOUNDS_CONFIG
   ),
@@ -2678,6 +2703,9 @@ var ForkopShellMethods = {
   ),
   getByedpiStatus: async () => callBaseMethod(
     Forkop.AvailableMethods.GET_BYEDPI_STATUS
+  ),
+  getXrayStatus: async () => callBaseMethod(
+    Forkop.AvailableMethods.GET_XRAY_STATUS
   ),
   getClashApiProxies: async () => callBaseMethod(Forkop.AvailableMethods.CLASH_API, [
     Forkop.AvailableClashAPIMethods.GET_PROXIES
@@ -2727,6 +2755,9 @@ var ForkopShellMethods = {
     masked ? "masked" : "raw"
   ]),
   showSingBoxConfig: async (masked = true) => callBaseMethod(Forkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+    masked ? "masked" : "raw"
+  ]),
+  showXrayConfig: async (masked = true) => callBaseMethod(Forkop.AvailableMethods.SHOW_XRAY_CONFIG, [
     masked ? "masked" : "raw"
   ]),
   checkLogs: async () => callBaseMethod(Forkop.AvailableMethods.CHECK_LOGS),
@@ -3058,6 +3089,21 @@ var ForkopShellMethods = {
 };
 
 // src/forkop/methods/custom/getDashboardSections.ts
+function getSectionProxyCore(section) {
+  const value = String(section.proxy_core || "").trim().toLowerCase();
+  return value === "xray" || value === "xray-core" ? "xray" : "sing-box";
+}
+function withProxyCore(section, group) {
+  const proxyCore = getSectionProxyCore(section);
+  return {
+    ...group,
+    proxyCore,
+    outbounds: (group.outbounds || []).map((outbound) => ({
+      ...outbound,
+      proxyCore: outbound.proxyCore || proxyCore
+    }))
+  };
+}
 var DASHBOARD_SECTION_CACHE_DIR = "/var/run/forkop/section-cache";
 var CLASH_API_FETCH_TIMEOUT_MS = 5e3;
 function getDisplayName(section) {
@@ -3775,7 +3821,10 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, urltestGro
         code,
         displayName,
         latency: item?.value.history?.[0]?.delay || 0,
-        type: priorityConfig ? "Priority" : item?.value.type || "URLTest",
+        type: priorityConfig ? "Priority" : dashboardClashType(
+          item?.value.type,
+          outboundMetadata?.protocols?.[code]
+        ) || "URLTest",
         selected: selector?.value?.now === code,
         link,
         canCopyLink,
@@ -3894,6 +3943,29 @@ function getSubscriptionMetadata(section, sourceCount, dashboardCache) {
   }
   return void 0;
 }
+function dashboardClashType(clashType, protocol) {
+  const type = clashType || "";
+  if (type && type.toLowerCase() !== "socks") {
+    return type;
+  }
+  const mapped = {
+    vless: "VLESS",
+    vmess: "VMess",
+    trojan: "Trojan",
+    shadowsocks: "Shadowsocks",
+    hysteria: "Hysteria2",
+    hysteria2: "Hysteria2",
+    hy2: "Hysteria2",
+    direct: "Direct",
+    freedom: "Direct",
+    socks: "SOCKS"
+  };
+  const key = String(protocol || "").toLowerCase();
+  if (!key) {
+    return type;
+  }
+  return mapped[key] || type || "Socks";
+}
 function getOutboundMetadata(dashboardCache) {
   const metadata = dashboardCache?.outboundMetadata;
   if (!metadata || typeof metadata !== "object") {
@@ -3901,7 +3973,8 @@ function getOutboundMetadata(dashboardCache) {
   }
   return {
     names: objectMap(metadata.names),
-    countries: objectMap(metadata.countries)
+    countries: objectMap(metadata.countries),
+    protocols: objectMap(metadata.protocols)
   };
 }
 function getCachedProxyLinks(dashboardCache) {
@@ -3956,7 +4029,7 @@ async function getDashboardSections(options = {}) {
           priorityGroups,
           cachedProxyLinks
         );
-        return {
+        return withProxyCore(section, {
           withTagSelect: true,
           code: selector?.code || sectionName,
           sectionName,
@@ -3968,12 +4041,12 @@ async function getDashboardSections(options = {}) {
           subscriptionSourceCount,
           subscriptionMetadata,
           outbounds
-        };
+        });
       }
       if (sectionAction === "vpn") {
         const outboundTag = getOutboundTagBySection(sectionName);
         const outbound = proxies.find((proxy) => proxy.code === outboundTag);
-        return {
+        return withProxyCore(section, {
           withTagSelect: false,
           code: outbound?.code || sectionName,
           sectionName,
@@ -3991,12 +4064,12 @@ async function getDashboardSections(options = {}) {
               runtimeAvailable: Boolean(outbound)
             }
           ]
-        };
+        });
       }
       if (sectionAction === "outbound") {
         const outboundTag = getOutboundTagBySection(sectionName);
         const outbound = proxies.find((proxy) => proxy.code === outboundTag);
-        return {
+        return withProxyCore(section, {
           withTagSelect: false,
           code: outbound?.code || sectionName,
           sectionName,
@@ -4012,16 +4085,16 @@ async function getDashboardSections(options = {}) {
               canCopyLink: false
             }
           ]
-        };
+        });
       }
-      return {
+      return withProxyCore(section, {
         withTagSelect: false,
         code: sectionName,
         sectionName,
         displayName,
         action: sectionAction,
         outbounds: []
-      };
+      });
     })
   );
   return {
@@ -4173,6 +4246,7 @@ function getCheckTitle(name) {
 var DIAGNOSTICS_CHECKS = /* @__PURE__ */ ((DIAGNOSTICS_CHECKS2) => {
   DIAGNOSTICS_CHECKS2["DNS"] = "DNS";
   DIAGNOSTICS_CHECKS2["SINGBOX"] = "SINGBOX";
+  DIAGNOSTICS_CHECKS2["XRAY"] = "XRAY";
   DIAGNOSTICS_CHECKS2["NFT"] = "NFT";
   DIAGNOSTICS_CHECKS2["ZAPRET"] = "ZAPRET";
   DIAGNOSTICS_CHECKS2["ZAPRET2"] = "ZAPRET2";
@@ -4192,6 +4266,11 @@ var DIAGNOSTICS_CHECKS_MAP = {
     order: 2,
     title: getCheckTitle("Sing-box"),
     code: "SINGBOX" /* SINGBOX */
+  },
+  ["XRAY" /* XRAY */]: {
+    order: 2.5,
+    title: getCheckTitle("Xray"),
+    code: "XRAY" /* XRAY */
   },
   ["NFT" /* NFT */]: {
     order: 4,
@@ -4243,7 +4322,11 @@ function createDiagnosticCheck(code, description) {
   };
 }
 function getDiagnosticsChecks(description, options = {}) {
-  const checks = ["DNS" /* DNS */, "SINGBOX" /* SINGBOX */];
+  const checks = [
+    "DNS" /* DNS */,
+    "SINGBOX" /* SINGBOX */,
+    "XRAY" /* XRAY */
+  ];
   if (options.includeInbounds === true) {
     checks.push("INBOUNDS" /* INBOUNDS */);
   }
@@ -4284,6 +4367,8 @@ var initialDiagnosticStore = {
     zapret2_installed: 0,
     byedpi_version: "loading",
     byedpi_installed: 0,
+    xray_version: "loading",
+    xray_installed: 0,
     server_inbounds_enabled_count: -1,
     openwrt_version: "loading",
     device_model: "loading"
@@ -4312,6 +4397,9 @@ var initialDiagnosticStore = {
     },
     showSingBoxConfig: {
       loading: false
+    },
+    showXrayConfig: {
+      loading: false
     }
   },
   diagnosticsRunAction: { loading: false },
@@ -4333,14 +4421,18 @@ var initialDiagnosticStore = {
     zapret2Remove: { loading: false },
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
-    byedpiRemove: { loading: false }
+    byedpiRemove: { loading: false },
+    xrayCheck: { loading: false },
+    xrayInstall: { loading: false },
+    xrayRemove: { loading: false }
   },
   updatesChecks: {
     forkop: { status: null, latest_version: "", release_url: "" },
     sing_box: { status: null, latest_version: "", release_url: "" },
     zapret: { status: null, latest_version: "", release_url: "" },
     zapret2: { status: null, latest_version: "", release_url: "" },
-    byedpi: { status: null, latest_version: "", release_url: "" }
+    byedpi: { status: null, latest_version: "", release_url: "" },
+    xray: { status: null, latest_version: "", release_url: "" }
   }
 };
 
@@ -4457,6 +4549,8 @@ var initialStore = {
     failed: false,
     data: {
       singbox: 0,
+      xray: 0,
+      xrayInstalled: 0,
       forkopRunning: 0,
       forkopEnabled: 0,
       forkopStatus: ""
@@ -4634,7 +4728,7 @@ function getForkopLogNotification(line) {
     return { kind: "error", line };
   }
   const update = line.match(
-    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i
+    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi|xray)\s+(\S+)/i
   );
   if (!update) {
     return null;
@@ -4678,6 +4772,7 @@ var componentActionKeyMap = {
   "sing_box:install_extended_compressed": "singBoxInstallExtendedCompressed",
   "sing_box:install_tiny": "singBoxInstallTiny",
   "sing_box:install_stable": "singBoxInstallStable",
+  "sing_box:list_versions": "singBoxCheck",
   "zapret:check_update": "zapretCheck",
   "zapret:install": "zapretInstall",
   "zapret:remove": "zapretRemove",
@@ -4686,10 +4781,15 @@ var componentActionKeyMap = {
   "zapret2:remove": "zapret2Remove",
   "byedpi:check_update": "byedpiCheck",
   "byedpi:install": "byedpiInstall",
-  "byedpi:remove": "byedpiRemove"
+  "byedpi:remove": "byedpiRemove",
+  "xray:check_update": "xrayCheck",
+  "xray:install": "xrayInstall",
+  "xray:list_versions": "xrayCheck",
+  "xray:remove": "xrayRemove"
 };
 function getComponentActionKey(component, action) {
-  return componentActionKeyMap[`${component}:${action}`];
+  const baseAction = `${action}`.split("@")[0];
+  return componentActionKeyMap[`${component}:${baseAction}`];
 }
 
 // src/forkop/helpers/singBoxVariant.ts
@@ -4793,7 +4893,10 @@ function getEmptyUpdatesActions() {
     zapret2Remove: { loading: false },
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
-    byedpiRemove: { loading: false }
+    byedpiRemove: { loading: false },
+    xrayCheck: { loading: false },
+    xrayInstall: { loading: false },
+    xrayRemove: { loading: false }
   };
 }
 function getEmptyDiagnosticsActions() {
@@ -4827,6 +4930,7 @@ function applyServiceState(uiState) {
     zapret_installed: uiState.capabilities.zapret_installed,
     zapret2_installed: uiState.capabilities.zapret2_installed,
     byedpi_installed: uiState.capabilities.byedpi_installed,
+    xray_installed: uiState.capabilities.xray_installed,
     server_inbounds_enabled_count: uiState.capabilities.server_inbounds_enabled_count
   };
   nextSystemInfo.sing_box_extended = uiState.capabilities.sing_box_extended;
@@ -4839,6 +4943,8 @@ function applyServiceState(uiState) {
       failed: false,
       data: {
         singbox: uiState.service.sing_box.running,
+        xray: uiState.service.xray?.running ?? 0,
+        xrayInstalled: uiState.capabilities.xray_installed ?? 0,
         forkopRunning: uiState.service.forkop.running,
         forkopEnabled: uiState.service.forkop.enabled,
         forkopStatus: uiState.service.forkop.status
@@ -5390,15 +5496,17 @@ async function fetchServicesInfo() {
   if (uiState) {
     return uiState;
   }
-  const [forkopResult, singboxResult] = await Promise.allSettled([
+  const [forkopResult, singboxResult, xrayResult] = await Promise.allSettled([
     ForkopShellMethods.getStatus(),
-    ForkopShellMethods.getSingBoxStatus()
+    ForkopShellMethods.getSingBoxStatus(),
+    ForkopShellMethods.getXrayStatus()
   ]);
   if (requestId !== latestServicesInfoRequestId) {
     return;
   }
   const forkop = getSettledMethodResponse("getStatus", forkopResult);
   const singbox = getSettledMethodResponse("getSingBoxStatus", singboxResult);
+  const xray = getSettledMethodResponse("getXrayStatus", xrayResult);
   const previousData = store.get().servicesInfoWidget.data;
   store.set({
     servicesInfoWidget: {
@@ -5406,6 +5514,8 @@ async function fetchServicesInfo() {
       failed: !forkop.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : previousData.singbox,
+        xray: xray.success ? xray.data.xray_process_running : previousData.xray,
+        xrayInstalled: xray.success ? xray.data.xray_installed : previousData.xrayInstalled,
         forkopRunning: forkop.success ? forkop.data.running : previousData.forkopRunning,
         forkopEnabled: forkop.success ? forkop.data.enabled : previousData.forkopEnabled,
         forkopStatus: forkop.success ? forkop.data.status : previousData.forkopStatus
@@ -6685,10 +6795,51 @@ async function renderSystemInfoWidget() {
       {
         key: _("Memory Usage"),
         value: String(prettyBytes(systemInfoWidget.data.memory))
-      }
+      },
+      ...getDashboardCoresSummaryItems()
     ]
   });
   container.replaceChildren(renderedWidget);
+}
+function getDashboardCoresSummaryItems() {
+  const sectionsWidget = store.get().sectionsWidget;
+  if (sectionsWidget.loading || sectionsWidget.failed) {
+    return [];
+  }
+  let xrayOutbounds = 0;
+  let singboxOutbounds = 0;
+  for (const section of sectionsWidget.data) {
+    const outboundCount = section.outbounds.length;
+    if (section.proxyCore === "xray") {
+      xrayOutbounds += outboundCount;
+    } else {
+      singboxOutbounds += outboundCount;
+    }
+  }
+  return [
+    {
+      key: _("Cores"),
+      value: `sing-box ${singboxOutbounds} \xB7 Xray ${xrayOutbounds}`
+    }
+  ];
+}
+function getXrayServiceRow(data) {
+  if (!data.xrayInstalled) {
+    return {
+      key: "Xray",
+      value: _("\u2718 Not installed"),
+      attributes: {
+        class: "fkp_dashboard-page__widgets-section__item__row--warning"
+      }
+    };
+  }
+  return {
+    key: "Xray",
+    value: data.xray ? _("\u2714 Running") : _("\u2718 Stopped"),
+    attributes: {
+      class: data.xray ? "fkp_dashboard-page__widgets-section__item__row--success" : "fkp_dashboard-page__widgets-section__item__row--error"
+    }
+  };
 }
 async function renderServicesInfoWidget() {
   logger.debug("[DASHBOARD]", "renderServicesInfoWidget");
@@ -6724,7 +6875,8 @@ async function renderServicesInfoWidget() {
         attributes: {
           class: servicesInfoWidget.data.singbox ? "fkp_dashboard-page__widgets-section__item__row--success" : "fkp_dashboard-page__widgets-section__item__row--error"
         }
-      }
+      },
+      getXrayServiceRow(servicesInfoWidget.data)
     ]
   });
   container.replaceChildren(renderedWidget);
@@ -6737,6 +6889,9 @@ async function onStoreUpdate(next, prev, diff) {
     ) && updateLatencyProgressInline(next.sectionsWidget);
     if (!inlineUpdated) {
       renderSectionsWidget();
+    }
+    if (!store.get().systemInfoWidget.loading) {
+      renderSystemInfoWidget();
     }
   }
   if (diff.bandwidthWidget) {
@@ -6947,6 +7102,10 @@ var styles = `
     color: var(--error-color-medium, red);
 }
 
+.fkp_dashboard-page__widgets-section__item__row--warning .fkp_dashboard-page__widgets-section__item__row__value {
+    color: var(--warn-color-medium, orange);
+}
+
 .fkp_dashboard-page__widgets-section__item__row__key {}
 
 .fkp_dashboard-page__widgets-section__item__row__value {}
@@ -6971,6 +7130,33 @@ var styles = `
     font-weight: 700;
     min-width: 0;
     overflow-wrap: anywhere;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.fkp_dashboard-page__core-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.fkp_dashboard-page__core-badge--xray {
+    color: var(--primary-color-medium, #7c5cbf);
+}
+
+.fkp_dashboard-page__core-badge--sing-box {
+    color: var(--success-color-medium, #2a8a4a);
 }
 
 .fkp_dashboard-page__outbound-section__title-section__actions {
@@ -8331,6 +8517,85 @@ async function runByedpiCheck() {
   });
 }
 
+// src/forkop/tabs/diagnostic/checks/runXrayCheck.ts
+async function runXrayCheck() {
+  const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.XRAY;
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description: _("Checking, please wait"),
+    state: "loading",
+    items: []
+  });
+  const xrayChecks = await ForkopShellMethods.checkXray();
+  if (!xrayChecks.success) {
+    updateCheckStore({
+      order,
+      code,
+      title,
+      description: _("Cannot receive checks result"),
+      state: "error",
+      items: []
+    });
+    throw new Error("Xray checks failed");
+  }
+  const data = xrayChecks.data;
+  const installed = Boolean(data.xray_installed);
+  const configured = Boolean(data.xray_sections_configured);
+  const portsListening = installed && Boolean(data.xray_ports_listening);
+  const allGood = configured ? installed && Boolean(data.xray_version_ok) && Boolean(data.xray_service_exist) && Boolean(data.xray_autostart_disabled) && Boolean(data.xray_process_running) && portsListening : installed && Boolean(data.xray_version_ok);
+  const atLeastOneGood = installed || Boolean(data.xray_version_ok) || Boolean(data.xray_service_exist) || Boolean(data.xray_autostart_disabled) || Boolean(data.xray_process_running) || portsListening || configured;
+  const { state, description } = getMeta({ atLeastOneGood, allGood });
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description,
+    state,
+    items: [
+      {
+        state: data.xray_installed ? "success" : configured ? "error" : "warning",
+        key: data.xray_installed ? _("Xray installed") : _("Xray is not installed"),
+        value: ""
+      },
+      {
+        state: data.xray_version_ok ? "success" : data.xray_installed ? "error" : "warning",
+        key: data.xray_version_ok ? _("Xray version is compatible (newer than 24.12.0)") : data.xray_installed ? _("Xray version is incompatible") : _("Xray version is unknown"),
+        value: ""
+      },
+      {
+        state: data.xray_service_exist ? "success" : configured ? "error" : "warning",
+        key: _("Xray service exist"),
+        value: ""
+      },
+      {
+        state: data.xray_autostart_disabled ? "success" : "warning",
+        key: _("Xray autostart disabled"),
+        value: ""
+      },
+      {
+        state: data.xray_process_running ? "success" : configured ? "error" : "warning",
+        key: data.xray_process_running ? _("Xray process running") : _("Xray process is not running"),
+        value: ""
+      },
+      {
+        state: portsListening ? "success" : configured ? "error" : "warning",
+        key: portsListening ? _("Xray listening ports") : _("Xray is not listening on ports"),
+        value: ""
+      },
+      {
+        state: configured ? "success" : "warning",
+        key: configured ? _("Xray sections are configured") : _("No Xray sections are configured"),
+        value: ""
+      }
+    ]
+  });
+  if (configured && (!data.xray_installed || !data.xray_process_running)) {
+    throw new Error("Xray checks failed");
+  }
+}
+
 // src/forkop/services/systemInfo.service.ts
 var UNKNOWN_SYSTEM_INFO = {
   loading: false,
@@ -8350,6 +8615,8 @@ var UNKNOWN_SYSTEM_INFO = {
   zapret2_installed: 0,
   byedpi_version: _("unknown"),
   byedpi_installed: 0,
+  xray_version: _("unknown"),
+  xray_installed: 0,
   server_inbounds_enabled_count: -1,
   openwrt_version: _("unknown"),
   device_model: _("unknown")
@@ -8413,6 +8680,7 @@ async function ensureSystemInfo({
         zapret_installed: latestSystemInfo.zapret_installed,
         zapret2_installed: latestSystemInfo.zapret2_installed,
         byedpi_installed: latestSystemInfo.byedpi_installed,
+        xray_installed: latestSystemInfo.xray_installed,
         server_inbounds_enabled_count: latestSystemInfo.server_inbounds_enabled_count
       };
       store.set({
@@ -8830,7 +9098,8 @@ function renderAvailableActions({
   disable,
   globalCheck,
   viewLogs,
-  showSingBoxConfig
+  showSingBoxConfig,
+  showXrayConfig
 }) {
   return E("div", { class: "fkp_diagnostic-page__right-bar__actions" }, [
     E("b", {}, _("Available actions")),
@@ -8909,6 +9178,15 @@ function renderAvailableActions({
         text: _("Show sing-box config"),
         loading: showSingBoxConfig.loading,
         disabled: showSingBoxConfig.disabled
+      })
+    ]),
+    ...insertIf(showXrayConfig.visible, [
+      renderButton({
+        onClick: showXrayConfig.onClick,
+        icon: renderCogIcon24,
+        text: _("Show Xray config"),
+        loading: showXrayConfig.loading,
+        disabled: showXrayConfig.disabled
       })
     ])
   ]);
@@ -9484,7 +9762,29 @@ var SING_BOX_MASKED_KEYS = /* @__PURE__ */ new Set([
   "domain_keyword",
   "domain_regex",
   "ip_cidr",
-  "source_ip_cidr"
+  "source_ip_cidr",
+  "excluded_source_ips",
+  "routing_excluded_ips"
+]);
+var XRAY_MASKED_KEYS = /* @__PURE__ */ new Set([
+  ...SING_BOX_MASKED_KEYS,
+  "id",
+  "address",
+  "port",
+  "publicKey",
+  "privateKey",
+  "shortId",
+  "spiderX",
+  "serverName",
+  "flow",
+  "encryption",
+  "auth",
+  "email",
+  "echConfigList",
+  "seed",
+  "psk",
+  "key",
+  "keys"
 ]);
 var FORKOP_MASK_AFTER_TOKEN = [
   "option proxy_string",
@@ -9514,6 +9814,8 @@ var FORKOP_MASK_AFTER_TOKEN_SPACE = [
   "list ip_cidr",
   "list source_ip_cidr",
   "list fully_routed_ips",
+  "list excluded_source_ips",
+  "list routing_excluded_ips",
   "option dns_server",
   "option bootstrap_dns_server",
   "list dns_server",
@@ -9627,6 +9929,33 @@ function formatMaskedSingBoxConfig(value) {
   }
   return JSON.stringify(maskSingBoxConfigValue(value), null, 2);
 }
+function maskXrayConfigValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => maskXrayConfigValue(item));
+  }
+  if (isRecord2(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        XRAY_MASKED_KEYS.has(key) ? MASKED_VALUE : maskXrayConfigValue(item)
+      ])
+    );
+  }
+  return value;
+}
+function stringifyXrayConfig(value) {
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+function formatMaskedXrayConfig(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.stringify(maskXrayConfigValue(JSON.parse(value)), null, 2);
+    } catch (_error) {
+      return value;
+    }
+  }
+  return JSON.stringify(maskXrayConfigValue(value), null, 2);
+}
 function maskGlobalCheckText(text = "") {
   let inMaskedMultiline = false;
   return `${text}`.split("\n").map((line) => {
@@ -9668,6 +9997,7 @@ function getDiagnosticsProviderOptions(systemInfo = store.get().diagnosticsSyste
     includeZapret: Boolean(systemInfo.zapret_installed),
     includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
+    includeXray: true,
     includeInbounds: systemInfo.server_inbounds_enabled_count > 0
   };
 }
@@ -9868,6 +10198,7 @@ async function fetchDiagnosticsProviderInfo({
         zapret_installed: uiState.capabilities.zapret_installed,
         zapret2_installed: uiState.capabilities.zapret2_installed,
         byedpi_installed: uiState.capabilities.byedpi_installed,
+        xray_installed: uiState.capabilities.xray_installed,
         server_inbounds_enabled_count: uiState.capabilities.server_inbounds_enabled_count
       });
       if (!nextSystemInfo2.zapret_installed) {
@@ -9878,6 +10209,9 @@ async function fetchDiagnosticsProviderInfo({
       }
       if (!nextSystemInfo2.byedpi_installed) {
         nextSystemInfo2.byedpi_version = "not installed";
+      }
+      if (!nextSystemInfo2.xray_installed) {
+        nextSystemInfo2.xray_version = "not installed";
       }
       const nextState2 = {
         diagnosticsSystemInfo: nextSystemInfo2
@@ -9894,10 +10228,11 @@ async function fetchDiagnosticsProviderInfo({
       store.set(nextState2);
       return;
     }
-    const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] = await Promise.all([
+    const [zapretRuntime, zapret2Runtime, byedpiRuntime, xrayCheck, inboundsConfig] = await Promise.all([
       ForkopShellMethods.checkZapretRuntime(),
       ForkopShellMethods.checkZapret2Runtime(),
       ForkopShellMethods.checkByedpiRuntime(),
+      ForkopShellMethods.checkXray(),
       ForkopShellMethods.checkInboundsConfig()
     ]);
     if (requestId !== latestProviderInfoRequestId) {
@@ -9910,6 +10245,7 @@ async function fetchDiagnosticsProviderInfo({
       zapret_installed: zapretRuntime.success ? zapretRuntime.data.zapret_installed : currentSystemInfo.zapret_installed,
       zapret2_installed: zapret2Runtime.success ? zapret2Runtime.data.zapret2_installed : currentSystemInfo.zapret2_installed,
       byedpi_installed: byedpiRuntime.success ? byedpiRuntime.data.byedpi_installed : currentSystemInfo.byedpi_installed,
+      xray_installed: xrayCheck.success ? xrayCheck.data.xray_installed : currentSystemInfo.xray_installed,
       server_inbounds_enabled_count: inboundsConfig.success ? inboundsConfig.data.enabled_count : -1
     };
     if (!zapretRuntime.success) {
@@ -9924,6 +10260,9 @@ async function fetchDiagnosticsProviderInfo({
     }
     if (!byedpiRuntime.success) {
       logger.error("[DIAGNOSTIC]", "fetchByedpiRuntime failed", byedpiRuntime);
+    }
+    if (!xrayCheck.success) {
+      logger.error("[DIAGNOSTIC]", "fetchXrayCheck failed", xrayCheck);
     }
     if (!inboundsConfig.success) {
       logger.error(
@@ -9940,6 +10279,9 @@ async function fetchDiagnosticsProviderInfo({
     }
     if (!nextSystemInfo.byedpi_installed) {
       nextSystemInfo.byedpi_version = "not installed";
+    }
+    if (!nextSystemInfo.xray_installed) {
+      nextSystemInfo.xray_version = "not installed";
     }
     const nextState = {
       diagnosticsSystemInfo: nextSystemInfo
@@ -10185,6 +10527,30 @@ async function handleShowSingBoxConfig() {
     setDiagnosticActionLoading("showSingBoxConfig", false);
   }
 }
+async function handleShowXrayConfig() {
+  setDiagnosticActionLoading("showXrayConfig", true);
+  try {
+    const showXrayConfig = await ForkopShellMethods.showXrayConfig(false);
+    if (showXrayConfig.success) {
+      const rawXrayConfigText = stringifyXrayConfig(showXrayConfig.data);
+      const maskedXrayConfigText = formatMaskedXrayConfig(showXrayConfig.data);
+      ui.showModal(
+        _("Show Xray config"),
+        renderModal(rawXrayConfigText, "show_xray_config", {
+          maskText: () => maskedXrayConfigText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true
+        })
+      );
+    } else {
+      logger.error("[DIAGNOSTIC]", "handleShowXrayConfig - e", showXrayConfig);
+    }
+  } catch (e) {
+    logger.error("[DIAGNOSTIC]", "handleShowXrayConfig - e", e);
+  } finally {
+    setDiagnosticActionLoading("showXrayConfig", false);
+  }
+}
 function renderWikiDisclaimerWidget() {
   const diagnosticsChecks = store.get().diagnosticsChecks;
   function getWikiKind() {
@@ -10288,6 +10654,12 @@ function renderDiagnosticAvailableActionsWidget() {
       visible: true,
       onClick: handleShowSingBoxConfig,
       disabled: utilityActionsDisabled
+    },
+    showXrayConfig: {
+      loading: diagnosticsActions.showXrayConfig.loading,
+      visible: true,
+      onClick: handleShowXrayConfig,
+      disabled: utilityActionsDisabled
     }
   });
   return preserveScrollForPage(() => {
@@ -10310,6 +10682,10 @@ function renderDiagnosticSystemInfoWidget() {
     {
       key: "Sing-box",
       value: formatSingBoxVersion(diagnosticsSystemInfo)
+    },
+    {
+      key: "Xray",
+      value: diagnosticsSystemInfo.xray_version || _("Not installed")
     }
   ];
   if (diagnosticsSystemInfo.zapret_installed) {
@@ -10398,6 +10774,7 @@ function getDiagnosticRunners(providerOptions) {
   return [
     { code: "DNS" /* DNS */, run: runDnsCheck },
     { code: "SINGBOX" /* SINGBOX */, run: runSingBoxCheck },
+    { code: "XRAY" /* XRAY */, run: runXrayCheck },
     ...providerOptions.includeInbounds ? [{ code: "INBOUNDS" /* INBOUNDS */, run: runInboundsCheck }] : [],
     { code: "NFT" /* NFT */, run: runNftCheck },
     ...providerOptions.includeZapret ? [{ code: "ZAPRET" /* ZAPRET */, run: runZapretCheck }] : [],
@@ -10830,6 +11207,15 @@ function render3() {
                 type: "button"
               },
               `${_("Closed")} 0`
+            ),
+            E(
+              "button",
+              {
+                id: "monitoring-tab-cores",
+                class: "btn cbi-button fkp_monitoring-page__tab",
+                type: "button"
+              },
+              `${_("Cores")} 0`
             )
           ]),
           E("div", { class: "fkp_monitoring-page__filters" }, [
@@ -10925,6 +11311,7 @@ var selectedDeviceFilter = ALL_FILTER_VALUE;
 var searchQuery = "";
 var localDeviceChoices = {};
 var routeDisplayNames = {};
+var routeSectionCores = {};
 var routeSections = [];
 var serverDisplayNames = {};
 var lastDeviceFilterSignature = "";
@@ -10983,6 +11370,10 @@ function buildRouteDisplayNames(sections) {
     "bypass-out": "Bypass",
     "direct-out": "direct"
   };
+  const cores = {
+    "bypass-out": "sing-box",
+    "direct-out": "sing-box"
+  };
   const serverMap = {};
   const routeSectionItems = [];
   const urltestsBySection = /* @__PURE__ */ new Map();
@@ -11005,9 +11396,12 @@ function buildRouteDisplayNames(sections) {
     }
     routeSectionItems.push({ sectionName, displayName });
     map[getOutboundTagBySection(sectionName)] = displayName;
+    const core = normalizeString(section.proxy_core).toLowerCase() === "xray" ? "xray" : "sing-box";
+    cores[getOutboundTagBySection(sectionName)] = core;
     const urltestIds = urltestsBySection.get(sectionName) || getUrlTestIds2(section);
     urltestIds.forEach((id) => {
       map[getUrlTestTag2(sectionName, id)] = displayName;
+      cores[getUrlTestTag2(sectionName, id)] = core;
     });
   });
   sections.filter((section) => section[".type"] === "server").filter((section) => section.enabled !== "0").forEach((section) => {
@@ -11019,6 +11413,7 @@ function buildRouteDisplayNames(sections) {
     serverMap[`server-${sectionName}-in`] = displayName;
   });
   routeDisplayNames = map;
+  routeSectionCores = cores;
   serverDisplayNames = serverMap;
   routeSections = routeSectionItems.sort(
     (a, b) => b.sectionName.length - a.sectionName.length
@@ -11166,6 +11561,27 @@ function getRoute(connection) {
   const route = getRouteDisplayNameByTag(routeTag || "") || getRouteDisplayNameByTag(fallbackRouteTag) || normalizeString(routeTag) || normalizeString(fallbackRouteTag);
   return route || "-";
 }
+function getConnectionRouteTag(connection) {
+  const chains = Array.isArray(connection.chains) ? connection.chains : [];
+  const routeTag = [...chains].reverse().find(getRouteDisplayNameByTag);
+  return routeTag || getRouteTagFromRule(connection.rule) || "";
+}
+function getCoreLabel(core) {
+  return core === "xray" ? "Xray" : "sing-box";
+}
+function getCore(connection) {
+  const tag = getConnectionRouteTag(connection);
+  if (tag && routeSectionCores[tag]) {
+    return routeSectionCores[tag];
+  }
+  const section = routeSections.find(({ sectionName }) => {
+    return tag === getOutboundTagBySection(sectionName) || tag.startsWith(`${sectionName}-`);
+  });
+  if (section) {
+    return routeSectionCores[getOutboundTagBySection(section.sectionName)] || "sing-box";
+  }
+  return "sing-box";
+}
 function getNetwork(connection) {
   return normalizeString(connection.metadata?.network).toLowerCase() || "-";
 }
@@ -11178,6 +11594,9 @@ function sortConnections(connections, tab) {
   });
 }
 function getConnectionsForActiveTab() {
+  if (activeTab === "cores") {
+    return sortConnections(Array.from(activeConnections.values()), "active");
+  }
   const source = activeTab === "active" ? Array.from(activeConnections.values()) : Array.from(closedConnections.values());
   return sortConnections(source, activeTab);
 }
@@ -11192,6 +11611,7 @@ function getSearchValues(connection) {
     target.primary,
     getNetwork(connection),
     getRoute(connection),
+    getCoreLabel(getCore(connection)),
     formatConnectionDuration(connection),
     formatBytes2(connection.download),
     formatBytes2(connection.upload),
@@ -11344,6 +11764,9 @@ function renderControls() {
   const closedButton = document.getElementById(
     "monitoring-tab-closed"
   );
+  const coresButton = document.getElementById(
+    "monitoring-tab-cores"
+  );
   const closeAllButton = document.getElementById(
     "monitoring-close-all"
   );
@@ -11362,8 +11785,15 @@ function renderControls() {
     );
     closedButton.disabled = serviceAvailability === "stopped";
   }
+  if (coresButton) {
+    coresButton.replaceChildren(
+      ...renderTabButtonContent(_("Cores"), activeConnections.size)
+    );
+    coresButton.disabled = serviceAvailability === "stopped";
+  }
   setButtonActive(activeButton, activeTab === "active");
   setButtonActive(closedButton, activeTab === "closed");
+  setButtonActive(coresButton, activeTab === "cores");
   if (closeAllButton) {
     closeAllButton.replaceChildren(renderXIcon24());
     closeAllButton.disabled = serviceAvailability === "stopped" || activeConnections.size === 0 || closingAll;
@@ -11476,6 +11906,12 @@ function renderConnectionRow(connection) {
       renderTableCell(_("Route"), [
         renderValue(getRoute(connection), "fkp_monitoring-page__route")
       ]),
+      renderTableCell(_("Core"), [
+        renderValue(
+          getCoreLabel(getCore(connection)),
+          `fkp_monitoring-page__core fkp_monitoring-page__core--${getCore(connection)}`
+        )
+      ]),
       renderTableCell(_("Time"), [
         renderValue(formatConnectionDuration(connection))
       ]),
@@ -11496,7 +11932,7 @@ function renderStateRow(text, className = "") {
       "td",
       {
         class: "fkp_monitoring-page__state-cell",
-        colSpan: 8
+        colSpan: 9
       },
       [
         E(
@@ -11522,6 +11958,7 @@ function renderConnectionsTable(connections, state) {
             E("th", {}, _("Host")),
             E("th", {}, _("Type")),
             E("th", {}, _("Route")),
+            E("th", {}, _("Core")),
             E("th", {}, _("Time")),
             E("th", {}, `\u2193 ${_("Downloaded")}`),
             E("th", {}, `\u2191 ${_("Uploaded")}`),
@@ -11530,6 +11967,80 @@ function renderConnectionsTable(connections, state) {
           ])
         ]),
         E("tbody", {}, rows)
+      ]
+    )
+  ]);
+}
+function getCoreDomainRows(connections) {
+  const grouped = /* @__PURE__ */ new Map();
+  connections.forEach((connection) => {
+    const domain = getTargetCellParts(connection).primary || "-";
+    const core = getCore(connection);
+    const route = getRoute(connection);
+    const key = `${domain}	${core}	${route}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    grouped.set(key, { domain, core, route, count: 1 });
+  });
+  return Array.from(grouped.values()).sort((a, b) => {
+    const byCount = b.count - a.count;
+    if (byCount) {
+      return byCount;
+    }
+    const byCore = getCoreLabel(a.core).localeCompare(getCoreLabel(b.core));
+    return byCore || a.domain.localeCompare(b.domain);
+  });
+}
+function renderCoresTable(rows, state) {
+  const body = state ? [
+    E("tr", { class: "fkp_monitoring-page__state-row" }, [
+      E(
+        "td",
+        {
+          class: "fkp_monitoring-page__state-cell",
+          colSpan: 4
+        },
+        [
+          E(
+            "div",
+            {
+              class: ["fkp_monitoring-page__state", state.className].filter(Boolean).join(" ")
+            },
+            state.text
+          )
+        ]
+      )
+    ])
+  ] : rows.map(
+    (row) => E("tr", {}, [
+      renderTableCell(_("Domain"), [renderValue(row.domain)]),
+      renderTableCell(_("Core"), [
+        renderValue(
+          getCoreLabel(row.core),
+          `fkp_monitoring-page__core fkp_monitoring-page__core--${row.core}`
+        )
+      ]),
+      renderTableCell(_("Route"), [renderValue(row.route)]),
+      renderTableCell(_("Connections"), [renderValue(String(row.count))])
+    ])
+  );
+  return E("div", { class: "fkp_monitoring-page__table-wrap" }, [
+    E(
+      "table",
+      { class: "table cbi-section-table fkp_monitoring-page__table" },
+      [
+        E("thead", {}, [
+          E("tr", {}, [
+            E("th", {}, _("Domain")),
+            E("th", {}, _("Core")),
+            E("th", {}, _("Route")),
+            E("th", {}, _("Connections"))
+          ])
+        ]),
+        E("tbody", {}, body)
       ]
     )
   ]);
@@ -11587,10 +12098,19 @@ function renderConnections(options = {}) {
   const visibleConnections = getVisibleConnections();
   if (visibleConnections.length === 0) {
     container.replaceChildren(
-      renderConnectionsTable([], {
+      activeTab === "cores" ? renderCoresTable([], {
+        text: _("No active connections")
+      }) : renderConnectionsTable([], {
         text: activeTab === "active" ? _("No active connections") : _("No closed connections")
       })
     );
+    return;
+  }
+  if (activeTab === "cores") {
+    container.replaceChildren(
+      renderCoresTable(getCoreDomainRows(visibleConnections))
+    );
+    container.scrollLeft = previousScrollLeft;
     return;
   }
   container.replaceChildren(renderConnectionsTable(visibleConnections));
@@ -11815,6 +12335,7 @@ async function closeAllConnections() {
 function bindControls() {
   const activeButton = document.getElementById("monitoring-tab-active");
   const closedButton = document.getElementById("monitoring-tab-closed");
+  const coresButton = document.getElementById("monitoring-tab-cores");
   const select = document.getElementById(
     "monitoring-device-filter"
   );
@@ -11831,6 +12352,9 @@ function bindControls() {
   }
   if (closedButton) {
     closedButton.onclick = () => setTab("closed");
+  }
+  if (coresButton) {
+    coresButton.onclick = () => setTab("cores");
   }
   if (closeAllButton) {
     closeAllButton.onclick = () => {
@@ -12554,6 +13078,23 @@ var styles5 = `
     font-weight: 500;
 }
 
+.fkp_monitoring-page__core {
+    display: inline-block;
+    width: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(25, 118, 210, 0.16);
+    color: var(--primary-color-high, #1976d2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.fkp_monitoring-page__core--xray {
+    background: rgba(156, 39, 176, 0.16);
+    color: #9c27b0;
+}
+
 .fkp_monitoring-page__network {
     background: transparent;
     border: 0;
@@ -12815,6 +13356,41 @@ var componentUpdateCheckCacheResolved = false;
 var componentUpdateCheckCacheSnapshot = null;
 var componentUpdateCheckCachePromise = null;
 var componentActionStateUnsubscribe = null;
+var SING_BOX_EXTENDED_FALLBACK_VERSIONS = [
+  "1.14.0-extended-2.7.1",
+  "1.14.0-extended-2.7.0",
+  "1.13.18-extended-2.6.5",
+  "1.13.18-extended-2.6.4",
+  "1.13.18-extended-2.6.3",
+  "1.13.16-extended-2.6.2",
+  "1.13.16-extended-2.6.1",
+  "1.13.16-extended-2.6.0",
+  "1.13.14-extended-2.5.3",
+  "1.13.14-extended-2.5.2",
+  "1.13.14-extended-2.5.1",
+  "1.13.14-extended-2.5.0",
+  "1.13.12-extended-2.4.1",
+  "1.13.12-extended-2.4.0"
+];
+var XRAY_FALLBACK_VERSIONS = [
+  "26.3.27",
+  "26.3.16",
+  "26.2.6",
+  "25.12.8",
+  "25.10.15",
+  "25.9.11",
+  "25.8.3",
+  "25.6.8",
+  "25.4.30",
+  "25.3.6"
+];
+var singBoxAvailableVersions = [...SING_BOX_EXTENDED_FALLBACK_VERSIONS];
+var singBoxVersionsLoading = false;
+var singBoxSelectedVersion = "";
+var xrayAvailableVersions = [...XRAY_FALLBACK_VERSIONS];
+var xrayVersionsLoading = false;
+var xraySelectedVersion = "";
+var coreVersionsLoading = false;
 var componentActionStateRefreshPromise = null;
 var followedComponentJobs = /* @__PURE__ */ new Set();
 var handledComponentJobs = /* @__PURE__ */ new Set();
@@ -12905,6 +13481,18 @@ function resetCheckResult(component) {
 function applyCachedCheckResults(results) {
   results.forEach((result) => {
     const status = result.status || null;
+    if (Array.isArray(result.available_versions) && result.component === "sing_box") {
+      singBoxAvailableVersions = result.available_versions.filter(Boolean);
+      if (singBoxSelectedVersion && !singBoxAvailableVersions.includes(singBoxSelectedVersion)) {
+        singBoxSelectedVersion = "";
+      }
+    }
+    if (Array.isArray(result.available_versions) && result.component === "xray") {
+      xrayAvailableVersions = result.available_versions.filter(Boolean);
+      if (xraySelectedVersion && !xrayAvailableVersions.includes(xraySelectedVersion)) {
+        xraySelectedVersion = "";
+      }
+    }
     if (status === "latest" || status === "outdated" || status === "dev") {
       setCheckResult(
         result.component,
@@ -13052,12 +13640,253 @@ function patchSystemInfoAfterMutation(result) {
       nextSystemInfo.byedpi_version = version;
     }
   }
+  if (result.component === "xray") {
+    nextSystemInfo.providerInfoLoaded = true;
+    if (result.action === "remove") {
+      nextSystemInfo.xray_installed = 0;
+      nextSystemInfo.xray_version = "not installed";
+    } else {
+      nextSystemInfo.xray_installed = 1;
+      nextSystemInfo.xray_version = version;
+    }
+  }
   const normalizedSystemInfo = normalizeSingBoxVariantFields(nextSystemInfo);
   store.set({
     diagnosticsSystemInfo: normalizedSystemInfo
   });
-  if (result.component === "zapret" || result.component === "zapret2" || result.component === "byedpi") {
+  if (result.component === "zapret" || result.component === "zapret2" || result.component === "byedpi" || result.component === "xray") {
     notifyActionProvidersAvailabilityChanged(normalizedSystemInfo);
+  }
+}
+function liveSelectedSingBoxVersion() {
+  const select = document.querySelector(
+    ".fkp_singbox-version-select"
+  );
+  const fromSelect = normalizeExtendedVersionTag(select?.value || "");
+  if (fromSelect) {
+    singBoxSelectedVersion = fromSelect;
+    return fromSelect;
+  }
+  return normalizeExtendedVersionTag(singBoxSelectedVersion);
+}
+function liveSelectedXrayVersion() {
+  const select = document.querySelector(
+    ".fkp_xray-version-select"
+  );
+  const fromSelect = normalizeXrayVersionTag(select?.value || "");
+  if (fromSelect) {
+    xraySelectedVersion = fromSelect;
+    return fromSelect;
+  }
+  return normalizeXrayVersionTag(xraySelectedVersion);
+}
+function currentXrayVersionInstallAction(tag) {
+  const normalized = normalizeXrayVersionTag(tag);
+  return normalized ? `install@${normalized}` : "install";
+}
+function currentSingBoxVersionInstallAction(tag) {
+  const systemInfo = normalizeSingBoxVariantFields(
+    store.get().diagnosticsSystemInfo
+  );
+  const normalized = `${tag || ""}`.trim();
+  if (!normalized) {
+    return systemInfo.sing_box_compressed ? "install_extended_compressed" : "install_extended";
+  }
+  if (systemInfo.sing_box_compressed) {
+    return `install_extended_compressed@${normalized}`;
+  }
+  return `install_extended@${normalized}`;
+}
+function tagHasOpenwrtPackageBuild(tag) {
+  const match = tag.match(/extended-([0-9]+)\.([0-9]+)/i);
+  if (!match) {
+    return false;
+  }
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 2 || major === 2 && minor >= 4;
+}
+function normalizeExtendedVersionTag(value) {
+  let tag = `${value || ""}`.trim();
+  if (!tag) {
+    return "";
+  }
+  if (tag[0] === "v" || tag[0] === "V") {
+    tag = tag.slice(1);
+  }
+  const lowered = tag.toLowerCase();
+  if (lowered === "version" || lowered.includes("alpha") || lowered.includes("beta") || lowered.includes("rc") || !lowered.includes("extended") || !tagHasOpenwrtPackageBuild(tag)) {
+    return "";
+  }
+  return tag;
+}
+function mergeSingBoxVersions(values) {
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  values.forEach((value) => {
+    const tag = normalizeExtendedVersionTag(value);
+    if (!tag || seen.has(tag)) {
+      return;
+    }
+    seen.add(tag);
+    result.push(tag);
+  });
+  return result;
+}
+function normalizeXrayVersionTag(value) {
+  let tag = `${value || ""}`.trim();
+  if (!tag) {
+    return "";
+  }
+  if (tag[0] === "v" || tag[0] === "V") {
+    tag = tag.slice(1);
+  }
+  const lowered = tag.toLowerCase();
+  if (lowered === "version" || lowered.includes("alpha") || lowered.includes("beta") || lowered.includes("rc") || !/^\d+\.\d+\.\d+/.test(tag)) {
+    return "";
+  }
+  return tag;
+}
+function mergeXrayVersions(values) {
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  values.forEach((value) => {
+    const tag = normalizeXrayVersionTag(value);
+    if (!tag || seen.has(tag)) {
+      return;
+    }
+    seen.add(tag);
+    result.push(tag);
+  });
+  return result;
+}
+async function fetchSingBoxVersionsFromGitHub() {
+  const response = await fetch(
+    "https://api.github.com/repos/shtorm-7/sing-box-extended/tags?per_page=30",
+    { headers: { Accept: "application/vnd.github+json" } }
+  );
+  if (!response.ok) {
+    throw new Error(`github tags http ${response.status}`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error("github tags invalid");
+  }
+  return mergeSingBoxVersions(data.map((item) => item && item.name));
+}
+async function loadSingBoxVersionsFromRouter() {
+  const startResponse = await ForkopShellMethods.componentActionStart(
+    "sing_box",
+    "list_versions"
+  );
+  if (!startResponse.success || !startResponse.data.job_id) {
+    return [];
+  }
+  const response = await ForkopShellMethods.waitComponentActionJob(
+    startResponse.data.job_id,
+    "sing_box",
+    "list_versions"
+  );
+  if (!response.success || !Array.isArray(response.data.available_versions)) {
+    return [];
+  }
+  return mergeSingBoxVersions(response.data.available_versions);
+}
+async function fetchXrayVersionsFromGitHub() {
+  const response = await fetch(
+    "https://api.github.com/repos/XTLS/Xray-core/releases?per_page=30",
+    { headers: { Accept: "application/vnd.github+json" } }
+  );
+  if (!response.ok) {
+    throw new Error(`github xray releases http ${response.status}`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error("github xray releases invalid");
+  }
+  return mergeXrayVersions(
+    data.filter(
+      (item) => item && typeof item === "object" && item.draft !== true && item.prerelease !== true
+    ).map((item) => item && item.tag_name)
+  );
+}
+async function loadXrayVersionsFromRouter() {
+  const startResponse = await ForkopShellMethods.componentActionStart(
+    "xray",
+    "list_versions"
+  );
+  if (!startResponse.success || !startResponse.data.job_id) {
+    return [];
+  }
+  const response = await ForkopShellMethods.waitComponentActionJob(
+    startResponse.data.job_id,
+    "xray",
+    "list_versions"
+  );
+  if (!response.success || !Array.isArray(response.data.available_versions)) {
+    return [];
+  }
+  return mergeXrayVersions(response.data.available_versions);
+}
+async function loadCoreVersionLists() {
+  if (coreVersionsLoading) {
+    return;
+  }
+  if (!singBoxAvailableVersions.length) {
+    singBoxAvailableVersions = [...SING_BOX_EXTENDED_FALLBACK_VERSIONS];
+  }
+  if (!xrayAvailableVersions.length) {
+    xrayAvailableVersions = [...XRAY_FALLBACK_VERSIONS];
+  }
+  coreVersionsLoading = true;
+  singBoxVersionsLoading = true;
+  xrayVersionsLoading = true;
+  renderUpdatesComponents();
+  try {
+    const [githubSingBox, githubXray] = await Promise.all([
+      fetchSingBoxVersionsFromGitHub().catch((error) => {
+        logger.debug("[UPDATES]", "load sing-box versions from GitHub failed", error);
+        return [];
+      }),
+      fetchXrayVersionsFromGitHub().catch((error) => {
+        logger.debug("[UPDATES]", "load xray versions from GitHub failed", error);
+        return [];
+      })
+    ]);
+    if (githubSingBox.length) {
+      singBoxAvailableVersions = githubSingBox;
+    }
+    if (githubXray.length) {
+      xrayAvailableVersions = githubXray;
+    }
+    singBoxVersionsLoading = !githubSingBox.length;
+    xrayVersionsLoading = !githubXray.length;
+    renderUpdatesComponents();
+    if (!githubSingBox.length) {
+      try {
+        const routerVersions = await loadSingBoxVersionsFromRouter();
+        if (routerVersions.length) {
+          singBoxAvailableVersions = routerVersions;
+        }
+      } catch (error) {
+        logger.debug("[UPDATES]", "load sing-box versions from router failed", error);
+      }
+    }
+    if (!githubXray.length) {
+      try {
+        const routerVersions = await loadXrayVersionsFromRouter();
+        if (routerVersions.length) {
+          xrayAvailableVersions = routerVersions;
+        }
+      } catch (error) {
+        logger.debug("[UPDATES]", "load xray versions from router failed", error);
+      }
+    }
+  } finally {
+    coreVersionsLoading = false;
+    singBoxVersionsLoading = false;
+    xrayVersionsLoading = false;
+    renderUpdatesComponents();
   }
 }
 async function applyCompletedComponentAction({
@@ -13065,6 +13894,25 @@ async function applyCompletedComponentAction({
   result,
   notify
 }) {
+  if (result.action === "list_versions") {
+    setActionLoading(key, false);
+    if (Array.isArray(result.available_versions)) {
+      const versions = result.available_versions.filter(Boolean);
+      if (result.component === "xray") {
+        xrayAvailableVersions = mergeXrayVersions(versions);
+        if (xraySelectedVersion && !xrayAvailableVersions.includes(xraySelectedVersion)) {
+          xraySelectedVersion = "";
+        }
+      } else if (result.component === "sing_box") {
+        singBoxAvailableVersions = mergeSingBoxVersions(versions);
+        if (singBoxSelectedVersion && !singBoxAvailableVersions.includes(singBoxSelectedVersion)) {
+          singBoxSelectedVersion = "";
+        }
+      }
+    }
+    renderUpdatesComponents();
+    return;
+  }
   if (result.action === "check_update") {
     setActionLoading(key, false);
     if (!shouldApplyCompletedComponentActionResult(result, notify)) {
@@ -13090,7 +13938,7 @@ async function applyCompletedComponentAction({
     }
     return;
   }
-  if (result.action === "install" || result.action.startsWith("install_")) {
+  if (result.action === "install" || result.action.startsWith("install_") || result.action.startsWith("install@")) {
     setCheckResult(result.component, "latest", result.latest_version || "");
   } else {
     resetCheckResult(result.component);
@@ -13359,6 +14207,7 @@ function getComponentCards() {
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
   const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
+  const xrayInstalled = Boolean(systemInfo.xray_installed);
   const singBoxInstalled = !isNotInstalled(systemInfo.sing_box_version);
   const singBoxStable = singBoxInstalled && !systemInfo.sing_box_extended && !systemInfo.sing_box_tiny;
   const singBoxExtended = Boolean(systemInfo.sing_box_extended) && !systemInfo.sing_box_compressed;
@@ -13432,6 +14281,13 @@ function getComponentCards() {
     installKey: "byedpiInstall",
     removeKey: "byedpiRemove"
   });
+  const xrayActions = getOptionalComponentActions({
+    component: "xray",
+    installed: xrayInstalled,
+    checkKey: "xrayCheck",
+    installKey: "xrayInstall",
+    removeKey: "xrayRemove"
+  });
   return [
     {
       component: "forkop",
@@ -13477,6 +14333,15 @@ function getComponentCards() {
       latestVersion: getLatestVersion("byedpi"),
       releaseUrl: getGitHubReleaseUrl("byedpi"),
       actions: byedpiActions
+    },
+    {
+      component: "xray",
+      column: 1,
+      title: "Xray",
+      version: systemInfoLoading ? _("Loading...") : xrayInstalled ? systemInfo.xray_version : _("Not installed"),
+      latestVersion: getLatestVersion("xray"),
+      releaseUrl: getGitHubReleaseUrl("xray"),
+      actions: xrayActions
     }
   ];
 }
@@ -13647,6 +14512,124 @@ function renderComponentCard(card) {
       ])
     );
   }
+  if (card.component === "sing_box") {
+    const currentVersion = `${card.version || ""}`.trim();
+    const options = mergeSingBoxVersions([
+      ...singBoxAvailableVersions,
+      ...SING_BOX_EXTENDED_FALLBACK_VERSIONS,
+      currentVersion
+    ]);
+    const selected = singBoxSelectedVersion && options.includes(singBoxSelectedVersion) ? singBoxSelectedVersion : options.includes(normalizeExtendedVersionTag(currentVersion)) ? normalizeExtendedVersionTag(currentVersion) : options[0] || "";
+    const installLoading = updatesActions.singBoxInstallExtended.loading || updatesActions.singBoxInstallExtendedCompressed.loading;
+    actionElements.push(
+      E("div", { class: "fkp_updates-page__component__versions" }, [
+        E(
+          "div",
+          { class: "fkp_updates-page__component__variants-title" },
+          _("Install specific version:")
+        ),
+        E("div", { class: "fkp_updates-page__component__versions-row" }, [
+          E(
+            "select",
+            {
+              class: "fkp_singbox-version-select",
+              change: (event) => {
+                const target = event.target;
+                singBoxSelectedVersion = target.value;
+              }
+            },
+            options.map(
+              (version) => E(
+                "option",
+                { value: version },
+                version === currentVersion || version === normalizeExtendedVersionTag(currentVersion) ? `${version} (${_("current")})` : version
+              )
+            )
+          ),
+          renderButton({
+            classNames: ["cbi-button-save"],
+            text: singBoxVersionsLoading ? _("Loading versions...") : _("Install selected"),
+            icon: renderDownloadIcon24,
+            loading: installLoading,
+            disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading || singBoxVersionsLoading || !selected,
+            onClick: () => {
+              const tag = liveSelectedSingBoxVersion();
+              if (!tag) {
+                return;
+              }
+              void handleComponentAction({
+                key: store.get().diagnosticsSystemInfo.sing_box_compressed ? "singBoxInstallExtendedCompressed" : "singBoxInstallExtended",
+                text: _("Install selected"),
+                icon: renderDownloadIcon24,
+                component: "sing_box",
+                action: currentSingBoxVersionInstallAction(
+                  tag
+                )
+              });
+            }
+          })
+        ])
+      ])
+    );
+  }
+  if (card.component === "xray") {
+    const currentVersion = normalizeXrayVersionTag(card.version);
+    const options = mergeXrayVersions([
+      ...xrayAvailableVersions,
+      ...XRAY_FALLBACK_VERSIONS,
+      currentVersion
+    ]);
+    const selected = xraySelectedVersion && options.includes(xraySelectedVersion) ? xraySelectedVersion : options.includes(currentVersion) ? currentVersion : options[0] || "";
+    const installLoading = updatesActions.xrayInstall.loading;
+    actionElements.push(
+      E("div", { class: "fkp_updates-page__component__versions" }, [
+        E(
+          "div",
+          { class: "fkp_updates-page__component__variants-title" },
+          _("Install specific version:")
+        ),
+        E("div", { class: "fkp_updates-page__component__versions-row" }, [
+          E(
+            "select",
+            {
+              class: "fkp_xray-version-select",
+              change: (event) => {
+                const target = event.target;
+                xraySelectedVersion = target.value;
+              }
+            },
+            options.map(
+              (version) => E(
+                "option",
+                { value: version },
+                version === currentVersion ? `${version} (${_("current")})` : version
+              )
+            )
+          ),
+          renderButton({
+            classNames: ["cbi-button-save"],
+            text: xrayVersionsLoading ? _("Loading versions...") : _("Install selected"),
+            icon: renderDownloadIcon24,
+            loading: installLoading,
+            disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading || xrayVersionsLoading || !selected,
+            onClick: () => {
+              const tag = liveSelectedXrayVersion();
+              if (!tag) {
+                return;
+              }
+              void handleComponentAction({
+                key: "xrayInstall",
+                text: _("Install selected"),
+                icon: renderDownloadIcon24,
+                component: "xray",
+                action: currentXrayVersionInstallAction(tag)
+              });
+            }
+          })
+        ])
+      ])
+    );
+  }
   const actionsContainer = E(
     "div",
     {
@@ -13732,6 +14715,7 @@ async function onPageMount4() {
   startComponentActionStateWatcher();
   renderUpdatesComponents();
   void ensureSystemInfo();
+  void loadCoreVersionLists();
   if (hasRuntimeSnapshot) {
     void refreshRuntimeUiState({ force: true });
   }
@@ -13932,6 +14916,31 @@ var styles6 = `
     display: flex;
     flex-wrap: nowrap;
     gap: 6px;
+}
+
+.fkp_updates-page__component__versions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fkp_updates-page__component__versions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.fkp_updates-page__component__versions-row select,
+.fkp_singbox-version-select,
+.fkp_xray-version-select {
+    width: 11.5em;
+    min-width: 11.5em;
+    max-width: 11.5em;
+    flex: 0 0 11.5em;
+    box-sizing: border-box;
+    pointer-events: auto;
 }
 `;
 

@@ -16,6 +16,9 @@ config settings 'settings'
         list source_network_interfaces 'br-lan'
         option enable_output_network_interface '0'
         #option output_network_interface 'wan'
+        option restart_interfaces_after_start '0'
+        #list restart_interfaces 'wan'
+        option restart_interfaces_delay '5'
         option enable_badwan_interface_monitoring '0'
         #list badwan_monitored_interfaces 'wan'
         #option badwan_reload_delay '2000'
@@ -28,6 +31,13 @@ config settings 'settings'
         option latency_test_url 'https://www.gstatic.com/generate_204'
         option download_lists_via_proxy '0'
         option download_components_via_proxy '0'
+        option persist_lists_locally '0'
+        option slots_auto_switch '0'
+        option slots_ping_host '1.1.1.1'
+        option slots_ping_host_backup '8.8.8.8'
+        option slots_check_interval '30'
+        option slots_fail_count '2'
+        option slots_active ''
         #option download_lists_via_proxy_section 'main'
         #option download_components_via_proxy_section 'main'
         option dont_touch_dhcp '0'
@@ -35,7 +45,17 @@ config settings 'settings'
         option cache_path '/tmp/sing-box/cache.db'
         option log_level 'warn'
         option exclude_ntp '0'
+        option exclude_bittorrent '0'
         option shutdown_correctly '0'
+        # IPv4 TCP самого роутера через выбранную секцию (NAT redirect 127.0.0.1:1604).
+        # Ping/DNS/NTP остаются прямыми. Секция обязательна, иначе опция игнорируется.
+        option route_router_traffic '0'
+        #option route_router_traffic_section 'main'
+        # Полностью исключить устройство/подсеть из Forkop (как routing_excluded_ips в Podkop).
+        # Трафик этих источников не маркируется и не уходит в tproxy.
+        # DNS для них идёт в dnsmasq без FakeIP.
+        #list routing_excluded_ips '192.168.1.50'
+        #list routing_excluded_ips '192.168.1.80/32'
 
 #config section 'subscription_example'
 #        option label 'Subscription'
@@ -55,6 +75,10 @@ config settings 'settings'
 #        #option outbound_detour_section 'main'
 #        option sort_by_latency '0'
 #        #list fully_routed_ips '192.168.1.2'
+        # Не применять правила этой секции к указанным источникам.
+        # Другие секции на эти IP по-прежнему действуют.
+        #list excluded_source_ips '192.168.1.40'
+        #list excluded_source_ips '192.168.1.64/28'
 
 #config section_interface
 #        option section 'subscription_example'

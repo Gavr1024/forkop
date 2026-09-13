@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatMaskedSingBoxConfig,
+  formatMaskedXrayConfig,
   maskGlobalCheckText,
   maskSingBoxConfigValue,
+  maskXrayConfigValue,
 } from '../helpers/maskDiagnostics';
 
 describe('diagnostic masking', () => {
@@ -54,6 +56,66 @@ describe('diagnostic masking', () => {
 
     expect(masked).toContain('"listen": "MASKED"');
     expect(masked).toContain('"listen_port": "MASKED"');
+  });
+
+  it('masks sensitive xray keys without mutating the original config', () => {
+    const config = {
+      outbounds: [
+        {
+          protocol: 'vless',
+          tag: 'proxy',
+          settings: {
+            address: '194.221.250.50',
+            port: 443,
+            id: 'client-id',
+            encryption: 'none',
+            flow: 'xtls-rprx-vision',
+          },
+          streamSettings: {
+            realitySettings: {
+              publicKey: 'pbk-secret',
+              shortId: '6ba85179',
+              serverName: 'yahoo.com',
+              fingerprint: 'chrome',
+            },
+          },
+        },
+      ],
+    };
+
+    expect(maskXrayConfigValue(config)).toEqual({
+      outbounds: [
+        {
+          protocol: 'vless',
+          tag: 'proxy',
+          settings: {
+            address: 'MASKED',
+            port: 'MASKED',
+            id: 'MASKED',
+            encryption: 'MASKED',
+            flow: 'MASKED',
+          },
+          streamSettings: {
+            realitySettings: {
+              publicKey: 'MASKED',
+              shortId: 'MASKED',
+              serverName: 'MASKED',
+              fingerprint: 'MASKED',
+            },
+          },
+        },
+      ],
+    });
+    expect(config.outbounds[0].settings.id).toBe('client-id');
+  });
+
+  it('formats masked xray config from a raw JSON string', () => {
+    const masked = formatMaskedXrayConfig(
+      '{"inbounds":[{"listen":"127.0.0.1","port":10808}]}',
+    );
+
+    expect(masked).toContain('"listen": "MASKED"');
+    expect(masked).toContain('"port": "MASKED"');
   });
 
   it('masks sensitive global check UCI values while keeping visible structure stable', () => {

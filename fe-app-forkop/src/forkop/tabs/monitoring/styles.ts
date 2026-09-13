@@ -431,6 +431,23 @@ export const styles = `
     font-weight: 500;
 }
 
+.fkp_monitoring-page__core {
+    display: inline-block;
+    width: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(25, 118, 210, 0.16);
+    color: var(--primary-color-high, #1976d2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.fkp_monitoring-page__core--xray {
+    background: rgba(156, 39, 176, 0.16);
+    color: #9c27b0;
+}
+
 .fkp_monitoring-page__network {
     background: transparent;
     border: 0;

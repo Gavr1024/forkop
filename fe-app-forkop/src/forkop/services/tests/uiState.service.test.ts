@@ -27,6 +27,11 @@ function createUiState(
         enabled: 1,
         status: 'stopped but enabled',
       },
+      xray: {
+        running: 0,
+        enabled: 0,
+        status: 'not installed',
+      },
     },
     capabilities: {
       sing_box_extended: 1,
@@ -36,6 +41,7 @@ function createUiState(
       zapret_installed: 1,
       zapret2_installed: 0,
       byedpi_installed: 1,
+      xray_installed: 0,
       server_inbounds_enabled_count: 0,
       ...capabilities,
     },
@@ -125,6 +131,7 @@ describe('applyUiStateToStore', () => {
       zapret_installed: 1,
       zapret2_installed: 0,
       byedpi_installed: 1,
+      xray_installed: 0,
       server_inbounds_enabled_count: 0,
     });
     expect(state.diagnosticsActions.start.loading).toBe(true);
@@ -338,6 +345,7 @@ describe('applyUiStateToStore', () => {
         zapret_installed: 0,
         zapret2_installed: 0,
         byedpi_installed: 1,
+        xray_installed: 0,
         server_inbounds_enabled_count: 0,
       },
     });
@@ -367,6 +375,7 @@ describe('applyUiStateToStore', () => {
           zapret_installed: 1,
           zapret2_installed: 1,
           byedpi_installed: 0,
+          xray_installed: 0,
           server_inbounds_enabled_count: 2,
         },
       ),

@@ -1,15 +1,15 @@
 # RU translations for FORKOP package.
 # Copyright (C) 2026 THE FORKOP COPYRIGHT HOLDER
 # This file is distributed under the same license as the FORKOP package.
-# ushan0v, 2026.
+# Automatically generated, 2026.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: FORKOP\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-18 07:01+0300\n"
-"PO-Revision-Date: 2026-07-18 07:01+0300\n"
-"Last-Translator: ushan0v\n"
+"POT-Creation-Date: 2026-09-11 03:05+0000\n"
+"PO-Revision-Date: 2026-09-11 03:05+0000\n"
+"Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
@@ -35,8 +35,29 @@ msgstr "+ Добавить URLTest"
 msgid "✔ Running"
 msgstr "✔ Работает"
 
+msgid "✘ Not installed"
+msgstr "✘ Не установлено"
+
 msgid "✘ Stopped"
 msgstr "✘ Остановлен"
+
+msgid "10 seconds"
+msgstr "10 секунд"
+
+msgid "15 seconds"
+msgstr "15 секунд"
+
+msgid "3 seconds"
+msgstr "3 секунды"
+
+msgid "30 seconds"
+msgstr "30 секунд"
+
+msgid "5 seconds"
+msgstr "5 секунд"
+
+msgid "60 seconds"
+msgstr "60 секунд"
 
 msgid "Accept external proxy connections and route them with sing-box."
 msgstr "Принимает внешние прокси-подключения и маршрутизирует их через sing-box."
@@ -71,20 +92,17 @@ msgstr "Добавьте хотя бы один DNS-сервер"
 msgid "Add prefix to nodes"
 msgstr "Добавлять префикс к узлам"
 
-msgid "Add URLs or local paths to .lst lists containing domains, IP addresses, or CIDR ranges. DNS actions ignore IP entries."
-msgstr "Добавьте URL или локальные пути к спискам .lst с доменами, IP-адресами или CIDR-подсетями. Для действия DNS записи IP игнорируются."
-
 msgid "Add URLs or local paths to .lst lists containing domains and subnets."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами и подсетями."
 
 msgid "Add URLs or local paths to .lst lists containing domains. IP entries are ignored."
 msgstr "Добавьте URL или локальные пути к спискам .lst с доменами. IP игнорируются."
 
-msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
-msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Подсети по умолчанию игнорируются."
-
 msgid "Add URLs or local paths to .srs / .json lists. Only domain rules are supported."
 msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Поддерживаются только доменные правила."
+
+msgid "Add URLs or local paths to .srs / .json lists. Subnets are ignored by default."
+msgstr "Добавьте URL или локальные пути к спискам .srs / .json. Подсети по умолчанию игнорируются."
 
 msgid "Add URLTest / Priority group"
 msgstr "Добавить URLTest / Приоритет группу"
@@ -119,6 +137,9 @@ msgstr "Все"
 msgid "All except selected"
 msgstr "Все, кроме выбранных"
 
+msgid "All hosts are unreachable"
+msgstr "Все хосты недоступны"
+
 msgid "All remaining except selected"
 msgstr "Все оставшиеся, кроме выбранных"
 
@@ -149,8 +170,14 @@ msgstr "ALPN"
 msgid "Alter ID"
 msgstr "Alter ID"
 
+msgid "Apply now"
+msgstr "Применить сейчас"
+
 msgid "Apply section rules only to the specified local IP addresses"
 msgstr "Применять правила секции только к указанным локальным IP-адресам"
+
+msgid "At least one host is reachable"
+msgstr "Доступен хотя бы один хост"
 
 msgid "At least one valid domain must be specified."
 msgstr "Нужно указать хотя бы один корректный домен."
@@ -170,6 +197,9 @@ msgstr "Авто-генерация HWID"
 msgid "Automatic component update checks"
 msgstr "Автоматическая проверка обновлений компонентов"
 
+msgid "Automatic switch"
+msgstr "Автопереключение"
+
 msgid "Automatic User-Agent selection"
 msgstr "Авто-подбор User-Agent"
 
@@ -188,11 +218,17 @@ msgstr "Доступные действия"
 msgid "Backend validation failed: %s"
 msgstr "Backend-проверка завершилась ошибкой: %s"
 
+msgid "Backup host to ping"
+msgstr "Резервный хост для ping"
+
 msgid "Bootstrap DNS"
 msgstr "Bootstrap DNS"
 
 msgid "Bootstrap DNS Servers"
 msgstr "Bootstrap DNS-серверы"
+
+msgid "Bring selected network interfaces down and up after Forkop starts. Use this if routing appears only after a WAN/LAN bounce."
+msgstr "После запуска Forkop указанные сетевые интерфейсы будут опущены и подняты. Нужно, если маршрутизация появляется только после перезапуска WAN/LAN."
 
 msgid "Browser FakeIP check could not be completed"
 msgstr "Не удалось выполнить проверку FakeIP в браузере"
@@ -251,6 +287,9 @@ msgstr "Путь к файлу кэша"
 msgid "Cache file path cannot be empty"
 msgstr "Путь к файлу кэша не может быть пустым"
 
+msgid "Cancel"
+msgstr "Отмена"
+
 msgid "Cannot receive checks result"
 msgstr "Не удалось получить результаты проверки"
 
@@ -272,6 +311,9 @@ msgstr "Пин сертификата недоступен. Примените �
 msgid "Check interval"
 msgstr "Интервал проверки"
 
+msgid "Check ping now"
+msgstr "Проверить ping сейчас"
+
 msgid "Check timeout after which the server is considered dead"
 msgstr "Таймаут проверки, после которого сервер считается мёртвым"
 
@@ -286,6 +328,9 @@ msgstr "Проверяем, пожалуйста подождите"
 
 msgid "checks"
 msgstr "проверки"
+
+msgid "Checks before switch"
+msgstr "Проверок до смены"
 
 msgid "Checks failed"
 msgstr "Проверки не выполнены"
@@ -323,6 +368,9 @@ msgstr "Закрыть подключение"
 msgid "Closed"
 msgstr "Закрытые"
 
+msgid "Completely excluded devices"
+msgstr "Полностью исключённые устройства"
+
 msgid "Component update available"
 msgstr "Доступно обновление компонента"
 
@@ -344,6 +392,12 @@ msgstr "Условия"
 msgid "Config File Path"
 msgstr "Путь к файлу конфигурации"
 
+msgid "Config saved to slot"
+msgstr "Конфиг сохранён в слот"
+
+msgid "Config slots"
+msgstr "Слоты конфига"
+
 msgid "Configuration for Forkop service"
 msgstr "Настройки сервиса Forkop"
 
@@ -355,6 +409,9 @@ msgstr "Подключаться через"
 
 msgid "Connection URL"
 msgstr "URL подключения"
+
+msgid "Connections"
+msgstr "Подключения"
 
 msgid "Connections are unavailable"
 msgstr "Подключения недоступны"
@@ -371,8 +428,17 @@ msgstr "Копировать"
 msgid "Copy proxy link"
 msgstr "Скопировать ссылку прокси"
 
+msgid "Core"
+msgstr "Ядро"
+
+msgid "Cores"
+msgstr "Ядра"
+
 msgid "Could not compare FakeIP and control public IPs"
 msgstr "Не удалось сравнить публичные IP FakeIP и контрольной проверки"
+
+msgid "current"
+msgstr "текущая"
 
 msgid "Current section cannot be used as its own transit section"
 msgstr "Текущую секцию нельзя использовать как транзит для самой себя"
@@ -416,6 +482,9 @@ msgstr "Фильтр по устройствам"
 msgid "Device or IP"
 msgstr "Устройство или IP"
 
+msgid "Devices and subnets in this list are fully excluded from Forkop: no tproxy mark, no FakeIP DNS, traffic goes as if Forkop were stopped."
+msgstr "Устройства и подсети из этого списка полностью исключаются из Forkop: без метки tproxy и без FakeIP DNS, трафик идёт так, будто Forkop выключен."
+
 msgid "DHCP has DNS server"
 msgstr "DHCP содержит DNS сервер"
 
@@ -439,6 +508,9 @@ msgstr "Отключить QUIC"
 
 msgid "Disable the QUIC protocol to improve compatibility or fix issues with video streaming"
 msgstr "Отключить QUIC протокол для улучшения совместимости или исправления видео стриминга"
+
+msgid "Disabled"
+msgstr "Отключено"
 
 msgid "Disabling interception is incompatible with action=zapret2 because Forkop sends matched traffic through NFQUEUE."
 msgstr "Отключение перехвата несовместимо с action=zapret2, потому что Forkop отправляет совпавший трафик через NFQUEUE."
@@ -500,6 +572,9 @@ msgstr "DNS через секцию"
 msgid "DNS Unavailability Timeout"
 msgstr "Таймаут недоступности DNS"
 
+msgid "Do not apply this section to the specified local IP addresses or subnets. Other sections still apply."
+msgstr "Не применять правила этой секции к указанным локальным IP или подсетям. Остальные секции продолжают действовать."
+
 msgid "Do not panic, everything can be fixed, just..."
 msgstr "Не паникуйте, всё можно исправить, просто..."
 
@@ -523,6 +598,9 @@ msgstr "Не тестировать указанные серверы."
 
 msgid "Does not resolve"
 msgstr "Не резолвится"
+
+msgid "Domain"
+msgstr "Домен"
 
 msgid "Domain and IP lists"
 msgstr "Списки доменов и IP"
@@ -554,6 +632,9 @@ msgstr "Скачивать компоненты через"
 msgid "Download components through a section"
 msgstr "Скачивать компоненты через секцию"
 
+msgid "Download lists now"
+msgstr "Скачать списки сейчас"
+
 msgid "Download lists through"
 msgstr "Скачивать списки через"
 
@@ -562,6 +643,9 @@ msgstr "Скачивать списки через секцию"
 
 msgid "Download remote lists and rule sets via the selected section"
 msgstr "Скачивать удаленные списки и наборы правил через выбранную секцию"
+
+msgid "Download selected community lists and rule sets to flash and use them as a backup when the online repository is unavailable. If download through a section is enabled, that section is started first."
+msgstr "Скачивать выбранные общедоступные списки и наборы правил на флэш-память и использовать их как резерв, если онлайн-репозиторий недоступен. Если включено скачивание через секцию, сначала поднимается эта секция."
 
 msgid "Download subscription through a section"
 msgstr "Скачивать подписку через секцию"
@@ -575,6 +659,9 @@ msgstr "Скачивать через"
 msgid "Downloaded"
 msgstr "Загружено"
 
+msgid "Downloading lists…"
+msgstr "Скачивание списков…"
+
 msgid "Drag rows to change priority. The rule at the top is checked first."
 msgstr "Перетаскивайте строки, чтобы изменить приоритет. Правило сверху проверяется первым."
 
@@ -587,11 +674,20 @@ msgstr "Дублирующееся значение"
 msgid "Edit rule action"
 msgstr "Изменить"
 
+msgid "Empty"
+msgstr "Пусто"
+
 msgid "Enable"
 msgstr "Включить"
 
+msgid "Enable “Save selected lists locally” in settings to keep backups on flash."
+msgstr "Включите «Сохранять выбранные списки локально» в настройках, чтобы хранить резерв на флэш-памяти."
+
 msgid "Enable authentication"
 msgstr "Включить авторизацию"
+
+msgid "Enable auto-switch"
+msgstr "Включить автопереключение"
 
 msgid "Enable automatic updates for remote lists and rule sets"
 msgstr "Включить автоматическое обновление удалённых списков и наборов правил"
@@ -644,6 +740,9 @@ msgstr "HWID, который будет отправляться при запр
 msgid "Enter the subscription URL"
 msgstr "Введите URL подписки"
 
+msgid "Exclude BitTorrent"
+msgstr "Исключить BitTorrent"
+
 msgid "Exclude by proxy parameters"
 msgstr "Исключить по параметрам прокси"
 
@@ -674,6 +773,9 @@ msgstr "Исключить из этого уровня серверы с одн
 msgid "Exclude URLTest / Priority group"
 msgstr "Исключить URLTest / Приоритет группу"
 
+msgid "Excluded devices"
+msgstr "Исключённые устройства"
+
 msgid "Expecting: %s"
 msgstr "Ожидается: %s"
 
@@ -697,6 +799,12 @@ msgstr "Не удалось закрыть подключения"
 
 msgid "Failed to copy!"
 msgstr "Не удалось скопировать!"
+
+msgid "Failed to download lists"
+msgstr "Не удалось скачать списки"
+
+msgid "Failed to download some lists. Existing local copies were kept."
+msgstr "Некоторые списки скачать не удалось. Уже сохранённые локальные копии оставлены."
 
 msgid "Failed to execute"
 msgstr "Не удалось выполнить"
@@ -869,6 +977,12 @@ msgstr "Проверка верхних DNS"
 msgid "Host"
 msgstr "Хост"
 
+msgid "Host is reachable"
+msgstr "Хост доступен"
+
+msgid "Host is unreachable"
+msgstr "Хост недоступен"
+
 msgid "How often higher priority levels are checked while a lower level is active"
 msgstr "Как часто проверять верхние уровни приоритета, пока активен нижний уровень"
 
@@ -892,6 +1006,9 @@ msgstr "HWID"
 
 msgid "Idle timeout"
 msgstr "Таймаут простоя"
+
+msgid "Immediately"
+msgstr "Сразу"
 
 msgid "Import subscription URLTest groups"
 msgstr "Добавлять URLTest группы из подписки"
@@ -932,6 +1049,12 @@ msgstr "Установить"
 msgid "Install another build:"
 msgstr "Установить другую сборку:"
 
+msgid "Install selected"
+msgstr "Установить выбранную"
+
+msgid "Install specific version:"
+msgstr "Установить конкретную версию:"
+
 msgid "Installed version is newer than release"
 msgstr "Установлена версия новее релиза"
 
@@ -943,6 +1066,9 @@ msgstr "Задержка при мониторинге интерфейсов"
 
 msgid "Interface monitoring for Bad WAN"
 msgstr "Мониторинг интерфейса для Bad WAN"
+
+msgid "Interfaces to restart"
+msgstr "Интерфейсы для перезапуска"
 
 msgid "Interrupt connections"
 msgstr "Прерывать соединения"
@@ -956,6 +1082,9 @@ msgstr "Прерывать соединения, когда URLTest перекл
 msgid "Interval"
 msgstr "Интервал"
 
+msgid "Interval, sec"
+msgstr "Интервал, сек"
+
 msgid "Invalid ByeDPI strategy"
 msgstr "Некорректная стратегия ByeDPI"
 
@@ -964,6 +1093,9 @@ msgstr "Неверный префикс CIDR"
 
 msgid "Invalid DNS server format. Examples: 8.8.8.8 or dns.example.com or dns.example.com/nicedns for DoH"
 msgstr "Неверный формат DNS-сервера. Примеры: 8.8.8.8, dns.example.com или dns.example.com/nicedns для DoH"
+
+msgid "Invalid DNS server port"
+msgstr "Некорректный порт DNS-сервера"
 
 msgid "Invalid domain address"
 msgstr "Неверный домен"
@@ -1067,9 +1199,6 @@ msgstr "Неверный URL Shadowsocks: ошибка разбора"
 msgid "Invalid SOCKS URL: invalid host and port"
 msgstr "Некорректный SOCKS URL: некорректные хост и порт"
 
-msgid "Invalid SOCKS URL: invalid host format"
-msgstr "Неверный URL SOCKS: неверный формат хоста"
-
 msgid "Invalid SOCKS URL: invalid port number"
 msgstr "Неверный URL SOCKS: неверный номер порта"
 
@@ -1172,6 +1301,9 @@ msgstr "Уровень"
 msgid "Level name"
 msgstr "Название уровня"
 
+msgid "List download finished"
+msgstr "Скачивание списков завершено"
+
 msgid "List must be an HTTP(S) URL or a local .lst path"
 msgstr "Список должен быть HTTP(S) URL или локальным путём .lst"
 
@@ -1193,8 +1325,20 @@ msgstr "Загрузка клиентской ссылки..."
 msgid "Loading connections"
 msgstr "Загрузка подключений"
 
+msgid "Loading versions..."
+msgstr "Загрузка версий..."
+
 msgid "Loading..."
 msgstr "Загрузка..."
+
+msgid "Local backup"
+msgstr "Локальный резерв"
+
+msgid "Local list cache"
+msgstr "Локальный кэш списков"
+
+msgid "Local list cache is disabled"
+msgstr "Локальный кэш списков отключён"
 
 msgid "Log Level"
 msgstr "Уровень логов"
@@ -1238,8 +1382,14 @@ msgstr "Наблюдаемые интерфейсы"
 msgid "Monitoring"
 msgstr "Мониторинг"
 
+msgid "ms"
+msgstr "мс"
+
 msgid "Must be a number in the range of 0 - 10000"
 msgstr "Должно быть числом в диапазоне 0 - 10000"
+
+msgid "Name"
+msgstr "Имя"
 
 msgid "Name displayed on the dashboard"
 msgstr "Имя, которое отображается в дашборде"
@@ -1289,8 +1439,14 @@ msgstr "Конфликт не обнаружен"
 msgid "No enabled server inbounds configured"
 msgstr "Включённые серверные inbounds не настроены"
 
+msgid "No local lists saved yet"
+msgstr "Локальные списки ещё не сохранены"
+
 msgid "No other marking rules found"
 msgstr "Другие правила маркировки не найдены"
+
+msgid "No ping result yet"
+msgstr "Ещё нет результата"
 
 msgid "No public firewall port required"
 msgstr "Публичный порт в firewall не требуется"
@@ -1304,6 +1460,9 @@ msgstr "Нет правил, использующих Zapret"
 msgid "No rules use Zapret2"
 msgstr "Нет правил, использующих Zapret2"
 
+msgid "No Xray sections are configured"
+msgstr "Секции Xray не настроены"
+
 msgid "Node list is empty"
 msgstr "Список узлов пуст"
 
@@ -1313,11 +1472,17 @@ msgstr "Узлы"
 msgid "None"
 msgstr "Нет"
 
+msgid "Not checked yet"
+msgstr "Ещё не проверялось"
+
 msgid "Not configured"
 msgstr "Не настроено"
 
 msgid "Not detected"
 msgstr "Не обнаружено"
+
+msgid "Not downloaded yet"
+msgstr "Ещё не скачано"
 
 msgid "Not implement yet"
 msgstr "Ещё не реализовано"
@@ -1342,6 +1507,12 @@ msgstr "Обфускация"
 
 msgid "Obfuscation password"
 msgstr "Пароль обфускации"
+
+msgid "Offline slot"
+msgstr "Офлайн-слот"
+
+msgid "Online slot"
+msgstr "Онлайн-слот"
 
 msgid "Only from the specified countries."
 msgstr "Только из указанных стран."
@@ -1368,7 +1539,7 @@ msgid "Only the specified servers."
 msgstr "Только указанные серверы."
 
 msgid "Open"
-msgstr ""
+msgstr "Открыть"
 
 msgid "Open priority settings and enter a display name"
 msgstr "Откройте настройки приоритета и укажите отображаемое имя"
@@ -1393,6 +1564,9 @@ msgstr "outbounds должен быть непустым массивом стр
 
 msgid "Output Network Interface"
 msgstr "Выходной сетевой интерфейс"
+
+msgid "Overwrite this slot with the current Forkop config?"
+msgstr "Записать текущий конфиг Forkop в этот слот?"
 
 msgid "Padding"
 msgstr "Padding"
@@ -1427,6 +1601,9 @@ msgstr "Периодически проверять текущий уровен�
 msgid "Pin on dashboard"
 msgstr "Закрепить в дашборде"
 
+msgid "Ping check finished"
+msgstr "Проверка ping завершена"
+
 msgid "Port cannot be empty"
 msgstr "Порт не может быть пустым"
 
@@ -1457,6 +1634,9 @@ msgstr "Предпочитаемый IP"
 msgid "Prefix text"
 msgstr "Текст префикса"
 
+msgid "Primary host to ping"
+msgstr "Основной хост для ping"
+
 msgid "Priority"
 msgstr "Приоритет"
 
@@ -1477,6 +1657,9 @@ msgstr "Настройки приоритета"
 
 msgid "Protocol"
 msgstr "Протокол"
+
+msgid "Proxy core"
+msgstr "Ядро прокси"
 
 msgid "Proxy link is unavailable"
 msgstr "Ссылка прокси недоступна"
@@ -1550,6 +1733,12 @@ msgstr "Выбор ресурсов по IP или CIDR внутри nfqws2 зд
 msgid "Restart Forkop"
 msgstr "Перезапустить Forkop"
 
+msgid "Restart delay"
+msgstr "Задержка перезапуска"
+
+msgid "Restart interfaces after start"
+msgstr "Перезапускать интерфейсы после старта"
+
 msgid "Resume updates"
 msgstr "Продолжить обновление"
 
@@ -1561,6 +1750,12 @@ msgstr "Маршрутизировать основные DNS-запросы ч�
 
 msgid "Route requests to this DNS server through another section."
 msgstr "Направлять запросы к этому DNS-серверу через другую секцию."
+
+msgid "Route the router's own traffic"
+msgstr "Маршрутизировать трафик роутера"
+
+msgid "Router traffic through"
+msgstr "Трафик роутера через"
 
 msgid "Routing mode"
 msgstr "Режим маршрутизации"
@@ -1607,8 +1802,26 @@ msgstr "Запустить диагностику"
 msgid "Save"
 msgstr "Сохранить"
 
+msgid "Save current config"
+msgstr "Сохранить текущий конфиг"
+
+msgid "Save selected lists locally"
+msgstr "Сохранять выбранные списки локально"
+
+msgid "Save switch settings"
+msgstr "Сохранить параметры переключения"
+
+msgid "Save the current Forkop config into a slot. Auto-switch applies the online slot if any host answers and the offline slot only if every host is down."
+msgstr "Сохраните текущий конфиг Forkop в слот. Автопереключение ставит онлайн-слот, если отвечает любой хост, и офлайн-слот, только если молчат все."
+
+msgid "Saved"
+msgstr "Сохранён"
+
 msgid "Search"
 msgstr "Поиск"
+
+msgid "Seconds to wait after a successful start before restarting the selected interfaces."
+msgstr "Сколько секунд подождать после успешного старта, прежде чем перезапускать выбранные интерфейсы."
 
 msgid "Secret"
 msgstr "Секрет"
@@ -1633,9 +1846,6 @@ msgstr "Выберите распространённый профиль кли�
 
 msgid "Select a network interface"
 msgstr "Выберите сетевой интерфейс"
-
-msgid "Select a predefined domain list"
-msgstr "Выберите готовый список доменов"
 
 msgid "Select a section"
 msgstr "Выберите секцию"
@@ -1688,11 +1898,20 @@ msgstr "Выберите WAN интерфейсы для мониторинга"
 msgid "Selected"
 msgstr "Выбран"
 
+msgid "Selected lists stored on flash and used when the online repository is unavailable."
+msgstr "Выбранные списки хранятся на флэш-памяти и используются, если онлайн-репозиторий недоступен."
+
 msgid "Selected section"
 msgstr "Выбранная секция"
 
 msgid "Selector and URLTest outbounds must contain a non-empty outbounds array"
 msgstr "Selector и URLTest outbound должны содержать непустой массив outbounds"
+
+msgid "Send IPv4 TCP from the router itself through the selected section. Ping, DNS and NTP stay direct. Apply and restart Forkop after changing this."
+msgstr "IPv4 TCP самого роутера пойдёт через выбранную секцию. Ping, DNS и NTP остаются прямыми. После изменения сохраните и перезапустите Forkop."
+
+msgid "Send BitTorrent and DHT traffic directly, bypassing Forkop. Trackers over HTTP/HTTPS may still follow section rules."
+msgstr "Отправлять трафик BitTorrent и DHT напрямую, в обход Forkop. HTTP/HTTPS-трекеры могут по-прежнему идти по правилам секции."
 
 msgid "Server"
 msgstr "Сервер"
@@ -1733,8 +1952,8 @@ msgstr "Серверы в дашборде"
 msgid "Service action failed"
 msgstr "Действие сервиса не выполнено"
 
-msgid "Service list"
-msgstr "Список сервисов"
+msgid "Service lists"
+msgstr "Списки сервисов"
 
 msgid "Services info"
 msgstr "Информация о сервисах"
@@ -1769,6 +1988,9 @@ msgstr "Показывать серверы, имена которых совп�
 msgid "Show sing-box config"
 msgstr "Показать sing-box конфигурацию"
 
+msgid "Show Xray config"
+msgstr "Показать конфигурацию Xray"
+
 msgid "Show subscription metadata for this source on the dashboard"
 msgstr "Отображать метаданные этой подписки в дашборде"
 
@@ -1795,6 +2017,21 @@ msgstr "Сервис sing-box существует"
 
 msgid "Sing-box version is compatible (newer than 1.12.4)"
 msgstr "Версия Sing-box совместима (новее 1.12.4)"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Slot action failed"
+msgstr "Не удалось выполнить действие со слотом"
+
+msgid "Slot applied"
+msgstr "Слот применён"
+
+msgid "Slot is active"
+msgstr "Слот активен"
+
+msgid "Slot on standby"
+msgstr "В ожидании"
 
 msgid "Sort by latency"
 msgstr "Сортировать по задержке"
@@ -1850,6 +2087,9 @@ msgstr "Отдельная служба Zapret2 неактивна"
 msgid "Start Forkop"
 msgstr "Запустить Forkop"
 
+msgid "Status"
+msgstr "Состояние"
+
 msgid "Stop checking when URLTest group is not used. Use sing-box duration format like 1d, 12h or 30m."
 msgstr "Останавливать проверку если URLTest группа не используется. Используйте формат длительности sing-box, например 1d, 12h или 30m."
 
@@ -1874,14 +2114,17 @@ msgstr "Интервал обновления подписки"
 msgid "Subscription URL"
 msgstr "URL подписки"
 
-msgid "Subscription URL cannot be empty"
-msgstr "URL подписки не может быть пустым"
-
 msgid "Subscription URL settings"
 msgstr "Настройки URL подписки"
 
 msgid "Subscriptions updated"
 msgstr "Подписки обновлены"
+
+msgid "Switch by ping"
+msgstr "Переключение по ping"
+
+msgid "Switch settings saved"
+msgstr "Параметры переключения сохранены"
 
 msgid "System info"
 msgstr "Системная информация"
@@ -1946,6 +2189,9 @@ msgstr "Есть правила использующие Zapret"
 msgid "There are rules using Zapret2"
 msgstr "Есть правила, использующие Zapret2"
 
+msgid "These switch settings are written into the live config and every saved slot at the same time."
+msgstr "Эти параметры переключения записываются и в текущий конфиг, и во все сохранённые слоты сразу."
+
 msgid "This field is required"
 msgstr "Заполните это поле"
 
@@ -1969,6 +2215,15 @@ msgstr "Этот флаг не принимает значение."
 
 msgid "This option requires a value."
 msgstr "Этой опции требуется значение."
+
+msgid "This profile is applied only when every checked host does not answer."
+msgstr "Этот профиль включается, только если не отвечает ни один проверяемый хост."
+
+msgid "This profile is applied while at least one checked host answers."
+msgstr "Этот профиль включается, пока отвечает хотя бы один проверяемый хост."
+
+msgid "Tick every predefined list you need. Selected lists are added together."
+msgstr "Отметьте все нужные готовые списки. Выбранные добавятся сразу вместе."
 
 msgid "Time"
 msgstr "Время"
@@ -2099,6 +2354,9 @@ msgstr "Обновить подписки"
 msgid "Update this subscription automatically"
 msgstr "Автоматически обновлять эту подписку"
 
+msgid "Updated"
+msgstr "Обновлено"
+
 msgid "Uplink"
 msgstr "Исходящий"
 
@@ -2219,11 +2477,56 @@ msgstr "Публичный WAN IP"
 msgid "What Forkop should do when this section matches"
 msgstr "Что Forkop должен делать при совпадении этой секции"
 
+msgid "When ping fails"
+msgstr "Когда пинга нет"
+
+msgid "When ping succeeds"
+msgstr "Когда пинг есть"
+
 msgid "When switching to another level, test every server and select the fastest instead of the first working one."
 msgstr "При переходе на другой уровень тестировать все сервера и выбирать самый быстрый, а не первый работающий."
 
+msgid "Which core handles this section. Xray sections are connected through a local SOCKS sidecar so sing-box keeps FakeIP, DNS and nft routing."
+msgstr "Какое ядро обрабатывает эту секцию. Секции Xray подключаются через локальный SOCKS sidecar, а sing-box сохраняет FakeIP, DNS и nft-маршрутизацию."
+
 msgid "XHTTP mode"
 msgstr "Режим XHTTP"
+
+msgid "Xray autostart disabled"
+msgstr "Автостарт Xray отключен"
+
+msgid "Xray installed"
+msgstr "Xray установлен"
+
+msgid "Xray is not installed"
+msgstr "Xray не установлен"
+
+msgid "Xray is not listening on ports"
+msgstr "Xray не слушает порты"
+
+msgid "Xray listening ports"
+msgstr "Xray слушает порты"
+
+msgid "Xray process is not running"
+msgstr "Процесс Xray не запущен"
+
+msgid "Xray process running"
+msgstr "Процесс Xray запущен"
+
+msgid "Xray sections are configured"
+msgstr "Секции Xray настроены"
+
+msgid "Xray service exist"
+msgstr "Сервис Xray существует"
+
+msgid "Xray version is compatible (newer than 24.12.0)"
+msgstr "Версия Xray совместима (новее 24.12.0)"
+
+msgid "Xray version is incompatible"
+msgstr "Версия Xray несовместима"
+
+msgid "Xray version is unknown"
+msgstr "Версия Xray неизвестна"
 
 msgid "YACD Secret Key"
 msgstr "Секретный ключ YACD"

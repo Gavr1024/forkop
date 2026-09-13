@@ -78,6 +78,41 @@ let componentUpdateCheckCacheSnapshot: Forkop.ComponentUpdateCheckCache | null =
 let componentUpdateCheckCachePromise: Promise<Forkop.ComponentUpdateCheckCache> | null =
   null;
 let componentActionStateUnsubscribe: (() => void) | null = null;
+const SING_BOX_EXTENDED_FALLBACK_VERSIONS = [
+  '1.14.0-extended-2.7.1',
+  '1.14.0-extended-2.7.0',
+  '1.13.18-extended-2.6.5',
+  '1.13.18-extended-2.6.4',
+  '1.13.18-extended-2.6.3',
+  '1.13.16-extended-2.6.2',
+  '1.13.16-extended-2.6.1',
+  '1.13.16-extended-2.6.0',
+  '1.13.14-extended-2.5.3',
+  '1.13.14-extended-2.5.2',
+  '1.13.14-extended-2.5.1',
+  '1.13.14-extended-2.5.0',
+  '1.13.12-extended-2.4.1',
+  '1.13.12-extended-2.4.0',
+];
+const XRAY_FALLBACK_VERSIONS = [
+  '26.3.27',
+  '26.3.16',
+  '26.2.6',
+  '25.12.8',
+  '25.10.15',
+  '25.9.11',
+  '25.8.3',
+  '25.6.8',
+  '25.4.30',
+  '25.3.6',
+];
+let singBoxAvailableVersions: string[] = [...SING_BOX_EXTENDED_FALLBACK_VERSIONS];
+let singBoxVersionsLoading = false;
+let singBoxSelectedVersion = '';
+let xrayAvailableVersions: string[] = [...XRAY_FALLBACK_VERSIONS];
+let xrayVersionsLoading = false;
+let xraySelectedVersion = '';
+let coreVersionsLoading = false;
 let componentActionStateRefreshPromise: Promise<void> | null = null;
 const followedComponentJobs = new Set<string>();
 const handledComponentJobs = new Set<string>();
@@ -212,6 +247,26 @@ function resetCheckResult(component: Forkop.ComponentName) {
 function applyCachedCheckResults(results: Forkop.ComponentActionResult[]) {
   results.forEach((result) => {
     const status = result.status || null;
+
+    if (Array.isArray(result.available_versions) && result.component === 'sing_box') {
+      singBoxAvailableVersions = result.available_versions.filter(Boolean);
+      if (
+        singBoxSelectedVersion &&
+        !singBoxAvailableVersions.includes(singBoxSelectedVersion)
+      ) {
+        singBoxSelectedVersion = '';
+      }
+    }
+
+    if (Array.isArray(result.available_versions) && result.component === 'xray') {
+      xrayAvailableVersions = result.available_versions.filter(Boolean);
+      if (
+        xraySelectedVersion &&
+        !xrayAvailableVersions.includes(xraySelectedVersion)
+      ) {
+        xraySelectedVersion = '';
+      }
+    }
 
     if (status === 'latest' || status === 'outdated' || status === 'dev') {
       setCheckResult(
@@ -400,6 +455,18 @@ function patchSystemInfoAfterMutation(result: Forkop.ComponentActionResult) {
     }
   }
 
+  if (result.component === 'xray') {
+    nextSystemInfo.providerInfoLoaded = true;
+
+    if (result.action === 'remove') {
+      nextSystemInfo.xray_installed = 0;
+      nextSystemInfo.xray_version = 'not installed';
+    } else {
+      nextSystemInfo.xray_installed = 1;
+      nextSystemInfo.xray_version = version;
+    }
+  }
+
   const normalizedSystemInfo = normalizeSingBoxVariantFields(nextSystemInfo);
 
   store.set({
@@ -409,9 +476,283 @@ function patchSystemInfoAfterMutation(result: Forkop.ComponentActionResult) {
   if (
     result.component === 'zapret' ||
     result.component === 'zapret2' ||
-    result.component === 'byedpi'
+    result.component === 'byedpi' ||
+    result.component === 'xray'
   ) {
     notifyActionProvidersAvailabilityChanged(normalizedSystemInfo);
+  }
+}
+
+function liveSelectedSingBoxVersion() {
+  const select = document.querySelector(
+    '.fkp_singbox-version-select',
+  ) as HTMLSelectElement | null;
+  const fromSelect = normalizeExtendedVersionTag(select?.value || '');
+  if (fromSelect) {
+    singBoxSelectedVersion = fromSelect;
+    return fromSelect;
+  }
+  return normalizeExtendedVersionTag(singBoxSelectedVersion);
+}
+
+function liveSelectedXrayVersion() {
+  const select = document.querySelector(
+    '.fkp_xray-version-select',
+  ) as HTMLSelectElement | null;
+  const fromSelect = normalizeXrayVersionTag(select?.value || '');
+  if (fromSelect) {
+    xraySelectedVersion = fromSelect;
+    return fromSelect;
+  }
+  return normalizeXrayVersionTag(xraySelectedVersion);
+}
+
+function currentXrayVersionInstallAction(tag: string) {
+  const normalized = normalizeXrayVersionTag(tag);
+  return normalized ? (`install@${normalized}` as Forkop.ComponentAction) : 'install';
+}
+
+function currentSingBoxVersionInstallAction(tag: string) {
+  const systemInfo = normalizeSingBoxVariantFields(
+    store.get().diagnosticsSystemInfo,
+  );
+  const normalized = `${tag || ''}`.trim();
+  if (!normalized) {
+    return systemInfo.sing_box_compressed
+      ? 'install_extended_compressed'
+      : 'install_extended';
+  }
+  if (systemInfo.sing_box_compressed) {
+    return `install_extended_compressed@${normalized}`;
+  }
+  return `install_extended@${normalized}`;
+}
+
+function tagHasOpenwrtPackageBuild(tag: string) {
+  const match = tag.match(/extended-([0-9]+)\.([0-9]+)/i);
+  if (!match) {
+    return false;
+  }
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 2 || (major === 2 && minor >= 4);
+}
+
+function normalizeExtendedVersionTag(value: unknown) {
+  let tag = `${value || ''}`.trim();
+  if (!tag) {
+    return '';
+  }
+  if (tag[0] === 'v' || tag[0] === 'V') {
+    tag = tag.slice(1);
+  }
+  const lowered = tag.toLowerCase();
+  if (
+    lowered === 'version' ||
+    lowered.includes('alpha') ||
+    lowered.includes('beta') ||
+    lowered.includes('rc') ||
+    !lowered.includes('extended') ||
+    !tagHasOpenwrtPackageBuild(tag)
+  ) {
+    return '';
+  }
+  return tag;
+}
+
+function mergeSingBoxVersions(values: unknown[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  values.forEach((value) => {
+    const tag = normalizeExtendedVersionTag(value);
+    if (!tag || seen.has(tag)) {
+      return;
+    }
+    seen.add(tag);
+    result.push(tag);
+  });
+  return result;
+}
+
+function normalizeXrayVersionTag(value: unknown) {
+  let tag = `${value || ''}`.trim();
+  if (!tag) {
+    return '';
+  }
+  if (tag[0] === 'v' || tag[0] === 'V') {
+    tag = tag.slice(1);
+  }
+  const lowered = tag.toLowerCase();
+  if (
+    lowered === 'version' ||
+    lowered.includes('alpha') ||
+    lowered.includes('beta') ||
+    lowered.includes('rc') ||
+    !/^\d+\.\d+\.\d+/.test(tag)
+  ) {
+    return '';
+  }
+  return tag;
+}
+
+function mergeXrayVersions(values: unknown[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  values.forEach((value) => {
+    const tag = normalizeXrayVersionTag(value);
+    if (!tag || seen.has(tag)) {
+      return;
+    }
+    seen.add(tag);
+    result.push(tag);
+  });
+  return result;
+}
+
+async function fetchSingBoxVersionsFromGitHub() {
+  const response = await fetch(
+    'https://api.github.com/repos/shtorm-7/sing-box-extended/tags?per_page=30',
+    { headers: { Accept: 'application/vnd.github+json' } },
+  );
+  if (!response.ok) {
+    throw new Error(`github tags http ${response.status}`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error('github tags invalid');
+  }
+  return mergeSingBoxVersions(data.map((item) => item && item.name));
+}
+
+async function loadSingBoxVersionsFromRouter() {
+  const startResponse = await ForkopShellMethods.componentActionStart(
+    'sing_box',
+    'list_versions',
+  );
+  if (!startResponse.success || !startResponse.data.job_id) {
+    return [];
+  }
+
+  const response = await ForkopShellMethods.waitComponentActionJob(
+    startResponse.data.job_id,
+    'sing_box',
+    'list_versions',
+  );
+  if (!response.success || !Array.isArray(response.data.available_versions)) {
+    return [];
+  }
+  return mergeSingBoxVersions(response.data.available_versions);
+}
+
+async function fetchXrayVersionsFromGitHub() {
+  const response = await fetch(
+    'https://api.github.com/repos/XTLS/Xray-core/releases?per_page=30',
+    { headers: { Accept: 'application/vnd.github+json' } },
+  );
+  if (!response.ok) {
+    throw new Error(`github xray releases http ${response.status}`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error('github xray releases invalid');
+  }
+  return mergeXrayVersions(
+    data
+      .filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          item.draft !== true &&
+          item.prerelease !== true,
+      )
+      .map((item) => item && item.tag_name),
+  );
+}
+
+async function loadXrayVersionsFromRouter() {
+  const startResponse = await ForkopShellMethods.componentActionStart(
+    'xray',
+    'list_versions',
+  );
+  if (!startResponse.success || !startResponse.data.job_id) {
+    return [];
+  }
+
+  const response = await ForkopShellMethods.waitComponentActionJob(
+    startResponse.data.job_id,
+    'xray',
+    'list_versions',
+  );
+  if (!response.success || !Array.isArray(response.data.available_versions)) {
+    return [];
+  }
+  return mergeXrayVersions(response.data.available_versions);
+}
+
+async function loadCoreVersionLists() {
+  if (coreVersionsLoading) {
+    return;
+  }
+
+  if (!singBoxAvailableVersions.length) {
+    singBoxAvailableVersions = [...SING_BOX_EXTENDED_FALLBACK_VERSIONS];
+  }
+  if (!xrayAvailableVersions.length) {
+    xrayAvailableVersions = [...XRAY_FALLBACK_VERSIONS];
+  }
+  coreVersionsLoading = true;
+  singBoxVersionsLoading = true;
+  xrayVersionsLoading = true;
+  renderUpdatesComponents();
+
+  try {
+    const [githubSingBox, githubXray] = await Promise.all([
+      fetchSingBoxVersionsFromGitHub().catch((error) => {
+        logger.debug('[UPDATES]', 'load sing-box versions from GitHub failed', error);
+        return [] as string[];
+      }),
+      fetchXrayVersionsFromGitHub().catch((error) => {
+        logger.debug('[UPDATES]', 'load xray versions from GitHub failed', error);
+        return [] as string[];
+      }),
+    ]);
+
+    if (githubSingBox.length) {
+      singBoxAvailableVersions = githubSingBox;
+    }
+    if (githubXray.length) {
+      xrayAvailableVersions = githubXray;
+    }
+    singBoxVersionsLoading = !githubSingBox.length;
+    xrayVersionsLoading = !githubXray.length;
+    renderUpdatesComponents();
+
+    if (!githubSingBox.length) {
+      try {
+        const routerVersions = await loadSingBoxVersionsFromRouter();
+        if (routerVersions.length) {
+          singBoxAvailableVersions = routerVersions;
+        }
+      } catch (error) {
+        logger.debug('[UPDATES]', 'load sing-box versions from router failed', error);
+      }
+    }
+
+    if (!githubXray.length) {
+      try {
+        const routerVersions = await loadXrayVersionsFromRouter();
+        if (routerVersions.length) {
+          xrayAvailableVersions = routerVersions;
+        }
+      } catch (error) {
+        logger.debug('[UPDATES]', 'load xray versions from router failed', error);
+      }
+    }
+  } finally {
+    coreVersionsLoading = false;
+    singBoxVersionsLoading = false;
+    xrayVersionsLoading = false;
+    renderUpdatesComponents();
   }
 }
 
@@ -424,6 +765,32 @@ async function applyCompletedComponentAction({
   result: Forkop.ComponentActionResult;
   notify: boolean;
 }) {
+  if (result.action === 'list_versions') {
+    setActionLoading(key, false);
+    if (Array.isArray(result.available_versions)) {
+      const versions = result.available_versions.filter(Boolean);
+      if (result.component === 'xray') {
+        xrayAvailableVersions = mergeXrayVersions(versions);
+        if (
+          xraySelectedVersion &&
+          !xrayAvailableVersions.includes(xraySelectedVersion)
+        ) {
+          xraySelectedVersion = '';
+        }
+      } else if (result.component === 'sing_box') {
+        singBoxAvailableVersions = mergeSingBoxVersions(versions);
+        if (
+          singBoxSelectedVersion &&
+          !singBoxAvailableVersions.includes(singBoxSelectedVersion)
+        ) {
+          singBoxSelectedVersion = '';
+        }
+      }
+    }
+    renderUpdatesComponents();
+    return;
+  }
+
   if (result.action === 'check_update') {
     setActionLoading(key, false);
 
@@ -457,7 +824,11 @@ async function applyCompletedComponentAction({
     return;
   }
 
-  if (result.action === 'install' || result.action.startsWith('install_')) {
+  if (
+    result.action === 'install' ||
+    result.action.startsWith('install_') ||
+    result.action.startsWith('install@')
+  ) {
     setCheckResult(result.component, 'latest', result.latest_version || '');
   } else {
     resetCheckResult(result.component);
@@ -782,7 +1153,7 @@ function getOptionalComponentActions({
   installKey,
   removeKey,
 }: {
-  component: 'zapret' | 'zapret2' | 'byedpi';
+  component: 'zapret' | 'zapret2' | 'byedpi' | 'xray';
   installed: boolean;
   checkKey: UpdatesActionKey;
   installKey: UpdatesActionKey;
@@ -812,6 +1183,7 @@ function getComponentCards(): ComponentCard[] {
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
   const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
+  const xrayInstalled = Boolean(systemInfo.xray_installed);
   const singBoxInstalled = !isNotInstalled(systemInfo.sing_box_version);
   const singBoxStable =
     singBoxInstalled &&
@@ -895,6 +1267,13 @@ function getComponentCards(): ComponentCard[] {
     installKey: 'byedpiInstall',
     removeKey: 'byedpiRemove',
   });
+  const xrayActions = getOptionalComponentActions({
+    component: 'xray',
+    installed: xrayInstalled,
+    checkKey: 'xrayCheck',
+    installKey: 'xrayInstall',
+    removeKey: 'xrayRemove',
+  });
 
   return [
     {
@@ -957,6 +1336,19 @@ function getComponentCards(): ComponentCard[] {
       latestVersion: getLatestVersion('byedpi'),
       releaseUrl: getGitHubReleaseUrl('byedpi'),
       actions: byedpiActions,
+    },
+    {
+      component: 'xray',
+      column: 1,
+      title: 'Xray',
+      version: systemInfoLoading
+        ? _('Loading...')
+        : xrayInstalled
+          ? systemInfo.xray_version
+          : _('Not installed'),
+      latestVersion: getLatestVersion('xray'),
+      releaseUrl: getGitHubReleaseUrl('xray'),
+      actions: xrayActions,
     },
   ];
 }
@@ -1167,6 +1559,161 @@ function renderComponentCard(card: ComponentCard) {
     );
   }
 
+  if (card.component === 'sing_box') {
+    const currentVersion = `${card.version || ''}`.trim();
+    const options = mergeSingBoxVersions([
+      ...singBoxAvailableVersions,
+      ...SING_BOX_EXTENDED_FALLBACK_VERSIONS,
+      currentVersion,
+    ]);
+    const selected =
+      singBoxSelectedVersion && options.includes(singBoxSelectedVersion)
+        ? singBoxSelectedVersion
+        : options.includes(normalizeExtendedVersionTag(currentVersion))
+          ? normalizeExtendedVersionTag(currentVersion)
+          : options[0] || '';
+    const installLoading =
+      updatesActions.singBoxInstallExtended.loading ||
+      updatesActions.singBoxInstallExtendedCompressed.loading;
+
+    actionElements.push(
+      E('div', { class: 'fkp_updates-page__component__versions' }, [
+        E(
+          'div',
+          { class: 'fkp_updates-page__component__variants-title' },
+          _('Install specific version:'),
+        ),
+        E('div', { class: 'fkp_updates-page__component__versions-row' }, [
+          E(
+            'select',
+            {
+              class: 'fkp_singbox-version-select',
+              change: (event: Event) => {
+                const target = event.target as HTMLSelectElement;
+                singBoxSelectedVersion = target.value;
+              },
+            },
+            options.map((version) =>
+              E(
+                'option',
+                { value: version },
+                version === currentVersion ||
+                  version === normalizeExtendedVersionTag(currentVersion)
+                  ? `${version} (${_('current')})`
+                  : version,
+              ),
+            ),
+          ),
+          renderButton({
+            classNames: ['cbi-button-save'],
+            text: singBoxVersionsLoading
+              ? _('Loading versions...')
+              : _('Install selected'),
+            icon: renderDownloadIcon24,
+            loading: installLoading,
+            disabled:
+              systemInfoLoading ||
+              serviceRuntimeActionLoading ||
+              anyActionLoading ||
+              singBoxVersionsLoading ||
+              !selected,
+            onClick: () => {
+              const tag = liveSelectedSingBoxVersion();
+              if (!tag) {
+                return;
+              }
+              void handleComponentAction({
+                key: store.get().diagnosticsSystemInfo.sing_box_compressed
+                  ? 'singBoxInstallExtendedCompressed'
+                  : 'singBoxInstallExtended',
+                text: _('Install selected'),
+                icon: renderDownloadIcon24,
+                component: 'sing_box',
+                action: currentSingBoxVersionInstallAction(
+                  tag,
+                ) as Forkop.ComponentAction,
+              });
+            },
+          }),
+        ]),
+      ]),
+    );
+  }
+
+  if (card.component === 'xray') {
+    const currentVersion = normalizeXrayVersionTag(card.version);
+    const options = mergeXrayVersions([
+      ...xrayAvailableVersions,
+      ...XRAY_FALLBACK_VERSIONS,
+      currentVersion,
+    ]);
+    const selected =
+      xraySelectedVersion && options.includes(xraySelectedVersion)
+        ? xraySelectedVersion
+        : options.includes(currentVersion)
+          ? currentVersion
+          : options[0] || '';
+    const installLoading = updatesActions.xrayInstall.loading;
+
+    actionElements.push(
+      E('div', { class: 'fkp_updates-page__component__versions' }, [
+        E(
+          'div',
+          { class: 'fkp_updates-page__component__variants-title' },
+          _('Install specific version:'),
+        ),
+        E('div', { class: 'fkp_updates-page__component__versions-row' }, [
+          E(
+            'select',
+            {
+              class: 'fkp_xray-version-select',
+              change: (event: Event) => {
+                const target = event.target as HTMLSelectElement;
+                xraySelectedVersion = target.value;
+              },
+            },
+            options.map((version) =>
+              E(
+                'option',
+                { value: version },
+                version === currentVersion
+                  ? `${version} (${_('current')})`
+                  : version,
+              ),
+            ),
+          ),
+          renderButton({
+            classNames: ['cbi-button-save'],
+            text: xrayVersionsLoading
+              ? _('Loading versions...')
+              : _('Install selected'),
+            icon: renderDownloadIcon24,
+            loading: installLoading,
+            disabled:
+              systemInfoLoading ||
+              serviceRuntimeActionLoading ||
+              anyActionLoading ||
+              xrayVersionsLoading ||
+              !selected,
+            onClick: () => {
+              const tag = liveSelectedXrayVersion();
+              if (!tag) {
+                return;
+              }
+              void handleComponentAction({
+                key: 'xrayInstall',
+                text: _('Install selected'),
+                icon: renderDownloadIcon24,
+                component: 'xray',
+                action: currentXrayVersionInstallAction(tag),
+              });
+            },
+          }),
+        ]),
+      ]),
+    );
+  }
+
   const actionsContainer = E(
     'div',
     {
@@ -1294,6 +1841,7 @@ async function onPageMount() {
   startComponentActionStateWatcher();
   renderUpdatesComponents();
   void ensureSystemInfo();
+  void loadCoreVersionLists();
   if (hasRuntimeSnapshot) {
     void refreshRuntimeUiState({ force: true });
   }

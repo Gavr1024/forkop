@@ -34,9 +34,10 @@ export async function fetchServicesInfo() {
     return uiState;
   }
 
-  const [forkopResult, singboxResult] = await Promise.allSettled([
+  const [forkopResult, singboxResult, xrayResult] = await Promise.allSettled([
     ForkopShellMethods.getStatus(),
     ForkopShellMethods.getSingBoxStatus(),
+    ForkopShellMethods.getXrayStatus(),
   ]);
 
   if (requestId !== latestServicesInfoRequestId) {
@@ -45,6 +46,7 @@ export async function fetchServicesInfo() {
 
   const forkop = getSettledMethodResponse('getStatus', forkopResult);
   const singbox = getSettledMethodResponse('getSingBoxStatus', singboxResult);
+  const xray = getSettledMethodResponse('getXrayStatus', xrayResult);
   const previousData = store.get().servicesInfoWidget.data;
 
   store.set({
@@ -53,6 +55,12 @@ export async function fetchServicesInfo() {
       failed: !forkop.success || !singbox.success,
       data: {
         singbox: singbox.success ? singbox.data.running : previousData.singbox,
+        xray: xray.success
+          ? xray.data.xray_process_running
+          : previousData.xray,
+        xrayInstalled: xray.success
+          ? xray.data.xray_installed
+          : previousData.xrayInstalled,
         forkopRunning: forkop.success
           ? forkop.data.running
           : previousData.forkopRunning,

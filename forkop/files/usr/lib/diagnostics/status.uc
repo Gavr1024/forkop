@@ -363,6 +363,8 @@ function forkop_config_masked_line(line) {
     line = mask_after_token_space(line, "list ip_cidr");
     line = mask_after_token_space(line, "list source_ip_cidr");
     line = mask_after_token_space(line, "list fully_routed_ips");
+    line = mask_after_token_space(line, "list excluded_source_ips");
+    line = mask_after_token_space(line, "list routing_excluded_ips");
     line = mask_after_token(line, "list server_users");
     line = mask_after_token_space(line, "option dns_server");
     line = mask_after_token_space(line, "option bootstrap_dns_server");
@@ -1369,6 +1371,21 @@ function render_global_sing_box_check() {
     render_flag_line(value, "sing_box_ports_listening", "\u2705 Sing-box listening ports", "\u274c Sing-box listening ports");
 }
 
+function render_global_xray_check() {
+    let value = object_or_empty(read_stdin_json());
+
+    render_flag_line(value, "xray_installed", "\u2705 Xray installed", "\u274c Xray installed");
+    render_flag_line(value, "xray_version_ok", "\u2705 Xray version is compatible (newer than 24.12.0)", "\u274c Xray version is not compatible (older than 24.12.0)");
+    render_flag_line(value, "xray_service_exist", "\u2705 Xray service exist", "\u274c Xray service exist");
+    render_flag_line(value, "xray_autostart_disabled", "\u2705 Xray autostart disabled", "\u274c Xray autostart disabled");
+    render_flag_line(value, "xray_process_running", "\u2705 Xray process running", "\u274c Xray process running");
+    render_flag_line(value, "xray_ports_listening", "\u2705 Xray listening ports", "\u274c Xray listening ports");
+    if (flag_is_one(value.xray_sections_configured))
+        print_line("Xray sections are configured");
+    else
+        print_line("No Xray sections are configured");
+}
+
 function render_global_system_info() {
     let value = object_or_empty(read_stdin_json());
     let forkop_version = object_value(value, "forkop_version") || "unknown";
@@ -1386,6 +1403,8 @@ function render_global_system_info() {
     print_line("\ud83d\udd73\ufe0f Forkop:   " + forkop_version);
     print_line("\ud83d\udd73\ufe0f LuCI App:      " + luci_app_version);
     print_line("\ud83d\udce6 Sing-box:      " + format_sing_box_version(value, sing_box_version));
+    let xray_version = object_value(value, "xray_version") || "not installed";
+    print_line("\ud83d\udce6 Xray:          " + xray_version);
     if (flag_is_one(value.zapret_installed))
         print_line("\ud83e\uddf5 Zapret:        " + zapret_version);
     if (flag_is_one(value.zapret2_installed))
@@ -1738,6 +1757,57 @@ function mask_sing_box_config(path) {
     write_json(mask_sing_box_value(read_json_file(path)));
 }
 
+let masked_xray_keys = {
+    id: true,
+    address: true,
+    port: true,
+    uuid: true,
+    password: true,
+    email: true,
+    username: true,
+    secret: true,
+    auth: true,
+    publicKey: true,
+    privateKey: true,
+    shortId: true,
+    spiderX: true,
+    serverName: true,
+    flow: true,
+    encryption: true,
+    fingerprint: true,
+    echConfigList: true,
+    server: true,
+    server_port: true,
+    listen: true,
+    listen_port: true,
+    seed: true,
+    psk: true,
+    key: true,
+    keys: true
+};
+
+function mask_xray_value(value) {
+    if (type(value) == "array") {
+        let result = [];
+        for (let item in value)
+            push(result, mask_xray_value(item));
+        return result;
+    }
+
+    if (type(value) == "object") {
+        let result = {};
+        for (let key, item in value)
+            result[key] = masked_xray_keys[key] || masked_sing_box_keys[key] ? "MASKED" : mask_xray_value(item);
+        return result;
+    }
+
+    return value;
+}
+
+function mask_xray_config(path) {
+    write_json(mask_xray_value(read_json_file(path)));
+}
+
 function prepare_check_proxy_config(input_path, output_path, cache_path) {
     let config = object_or_empty(read_json_file(input_path));
     config.inbounds = [];
@@ -1973,6 +2043,8 @@ else if (mode == "global-inbounds-check")
     render_global_inbounds_check();
 else if (mode == "global-sing-box-check")
     render_global_sing_box_check();
+else if (mode == "global-xray-check")
+    render_global_xray_check();
 else if (mode == "global-system-info")
     render_global_system_info();
 else if (mode == "global-fakeip-check")
@@ -2009,6 +2081,8 @@ else if (mode == "nfqws-strategy-validation")
     nfqws_strategy_validation(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "mask-sing-box-config")
     mask_sing_box_config(ARGV[1]);
+else if (mode == "mask-xray-config")
+    mask_xray_config(ARGV[1]);
 else if (mode == "proxy-response-is-retryable-error")
     exit(proxy_response_is_retryable_error() ? 0 : 1);
 else if (mode == "prepare-check-proxy-config")

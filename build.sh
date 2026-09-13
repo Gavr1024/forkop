@@ -400,38 +400,36 @@ write_backend_apk_scripts() {
   make_dir "$scripts_dir"
 
   cat > "$scripts_dir/backend-pre-install.sh" <<'EOF'
-#!/usr/bin/ucode
-exit(0);
+#!/bin/sh
+exit 0
 EOF
 
   cat > "$scripts_dir/backend-post-install.sh" <<'EOF'
-#!/usr/bin/ucode
-if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
-    exit(system("FORKOP_LIB=/usr/lib/forkop ucode -L /usr/lib/forkop /usr/lib/forkop/config/migration.uc migrate && /usr/bin/forkop package_postinst"));
-exit(0);
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+FORKOP_LIB=/usr/lib/forkop ucode -L /usr/lib/forkop /usr/lib/forkop/config/migration.uc migrate || exit $?
+/usr/bin/forkop package_postinst
 EOF
 
   cat > "$scripts_dir/backend-pre-deinstall.sh" <<'EOF'
-#!/usr/bin/ucode
-
-if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
-	system("/usr/bin/forkop package_prerm remove >/dev/null 2>&1");
-
-exit(0);
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+/usr/bin/forkop package_prerm remove >/dev/null 2>&1 || true
+exit 0
 EOF
 
   cat > "$scripts_dir/backend-pre-upgrade.sh" <<'EOF'
-#!/usr/bin/ucode
-if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
-    exit(system("/usr/bin/forkop package_prerm upgrade >/dev/null 2>&1"));
-exit(0);
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+/usr/bin/forkop package_prerm upgrade >/dev/null 2>&1 || true
+exit 0
 EOF
 
   cat > "$scripts_dir/backend-post-upgrade.sh" <<'EOF'
-#!/usr/bin/ucode
-if (getenv("IPKG_INSTROOT") == null || getenv("IPKG_INSTROOT") == "")
-    exit(system("FORKOP_LIB=/usr/lib/forkop ucode -L /usr/lib/forkop /usr/lib/forkop/config/migration.uc migrate && /usr/bin/forkop package_postinst"));
-exit(0);
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+FORKOP_LIB=/usr/lib/forkop ucode -L /usr/lib/forkop /usr/lib/forkop/config/migration.uc migrate || exit $?
+/usr/bin/forkop package_postinst
 EOF
 
   chmod 0755 "$scripts_dir"/backend-*.sh

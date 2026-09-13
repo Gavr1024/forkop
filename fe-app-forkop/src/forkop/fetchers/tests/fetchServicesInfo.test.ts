@@ -39,6 +39,7 @@ describe('fetchServicesInfo', () => {
         zapret_installed: 1,
         zapret2_installed: 0,
         byedpi_installed: 0,
+        xray_installed: 0,
         server_inbounds_enabled_count: 0,
       },
       actions: {
@@ -78,6 +79,8 @@ describe('fetchServicesInfo', () => {
         failed: false,
         data: {
           singbox: 1,
+          xray: 1,
+          xrayInstalled: 1,
           forkopRunning: 1,
           forkopEnabled: 1,
           forkopStatus: 'running & enabled',
@@ -104,6 +107,11 @@ describe('fetchServicesInfo', () => {
         }),
         stderr: '',
         code: 0,
+      })
+      .mockResolvedValueOnce({
+        stdout: '',
+        stderr: 'get_xray_status failed',
+        code: 1,
       });
 
     await fetchServicesInfo();
@@ -113,6 +121,8 @@ describe('fetchServicesInfo', () => {
     expect(state.servicesInfoWidget.failed).toBe(true);
     expect(state.servicesInfoWidget.data).toEqual({
       singbox: 0,
+      xray: 1,
+      xrayInstalled: 1,
       forkopRunning: 1,
       forkopEnabled: 1,
       forkopStatus: 'running & enabled',

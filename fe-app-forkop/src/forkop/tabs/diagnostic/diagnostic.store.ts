@@ -8,6 +8,7 @@ export interface DiagnosticsProviderOptions {
   includeZapret?: boolean;
   includeZapret2?: boolean;
   includeByedpi?: boolean;
+  includeXray?: boolean;
   includeInbounds?: boolean;
 }
 
@@ -31,7 +32,11 @@ export function getDiagnosticsChecks(
   description: string,
   options: DiagnosticsProviderOptions = {},
 ): Array<IDiagnosticsChecksStoreItem> {
-  const checks = [DIAGNOSTICS_CHECKS.DNS, DIAGNOSTICS_CHECKS.SINGBOX];
+  const checks = [
+    DIAGNOSTICS_CHECKS.DNS,
+    DIAGNOSTICS_CHECKS.SINGBOX,
+    DIAGNOSTICS_CHECKS.XRAY,
+  ];
 
   if (options.includeInbounds === true) {
     checks.push(DIAGNOSTICS_CHECKS.INBOUNDS);
@@ -91,6 +96,8 @@ export const initialDiagnosticStore: Pick<
     zapret2_installed: 0,
     byedpi_version: 'loading',
     byedpi_installed: 0,
+    xray_version: 'loading',
+    xray_installed: 0,
     server_inbounds_enabled_count: -1,
     openwrt_version: 'loading',
     device_model: 'loading',
@@ -120,6 +127,9 @@ export const initialDiagnosticStore: Pick<
     showSingBoxConfig: {
       loading: false,
     },
+    showXrayConfig: {
+      loading: false,
+    },
   },
   diagnosticsRunAction: { loading: false },
   diagnosticsChecks: getDiagnosticsChecks(_('Not running')),
@@ -141,6 +151,9 @@ export const initialDiagnosticStore: Pick<
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
     byedpiRemove: { loading: false },
+    xrayCheck: { loading: false },
+    xrayInstall: { loading: false },
+    xrayRemove: { loading: false },
   },
   updatesChecks: {
     forkop: { status: null, latest_version: '', release_url: '' },
@@ -148,5 +161,6 @@ export const initialDiagnosticStore: Pick<
     zapret: { status: null, latest_version: '', release_url: '' },
     zapret2: { status: null, latest_version: '', release_url: '' },
     byedpi: { status: null, latest_version: '', release_url: '' },
+    xray: { status: null, latest_version: '', release_url: '' },
   },
 };

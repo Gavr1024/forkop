@@ -36,6 +36,7 @@ const SB_DNS_INBOUND_ADDRESS = getenv("SB_DNS_INBOUND_ADDRESS") || "127.0.0.42";
 const ZAPRET_PROVIDER_NFQWS_BIN = getenv("ZAPRET_PROVIDER_NFQWS_BIN") || "/opt/zapret/nfq/nfqws";
 const ZAPRET2_PROVIDER_NFQWS2_BIN = getenv("ZAPRET2_PROVIDER_NFQWS2_BIN") || "/opt/zapret2/nfq2/nfqws2";
 const BYEDPI_BIN = getenv("BYEDPI_BIN") || "/usr/bin/ciadpi";
+const XRAY_BIN = getenv("XRAY_BIN") || "/usr/bin/xray";
 
 function as_string(value) {
     return value == null ? "" : "" + value;
@@ -304,6 +305,11 @@ function ui_state_json() {
     if (sing_box_status == "")
         sing_box_status = service_status_text(sing_box_running, sing_box_enabled);
 
+    let xray_is_running = xray_running() ? 1 : 0;
+    let xray_status = file_executable(XRAY_BIN)
+        ? service_status_text(xray_is_running, 0)
+        : "not installed";
+
     write_json({
         service: {
             forkop: {
@@ -316,6 +322,11 @@ function ui_state_json() {
                 running: sing_box_running,
                 enabled: sing_box_enabled,
                 status: sing_box_status
+            },
+            xray: {
+                running: xray_is_running,
+                enabled: 0,
+                status: xray_status
             }
         },
         capabilities: {
@@ -326,6 +337,7 @@ function ui_state_json() {
             zapret_installed: arg_number(ARGV[12]),
             zapret2_installed: arg_number(ARGV[13]),
             byedpi_installed: arg_number(ARGV[14]),
+            xray_installed: arg_number(ARGV[16]),
             server_inbounds_enabled_count: arg_number(ARGV[15])
         },
         actions: action_state
@@ -862,6 +874,17 @@ function sing_box_running() {
     ]);
 }
 
+function xray_running() {
+    if (!file_executable(XRAY_BIN))
+        return false;
+    if (module_success(LIB_DIR + "/xray/runtime.uc", [ "running" ]))
+        return true;
+    return command_success_from_args([ "pidof", "xray" ]) ||
+        command_success_from_args([ "pgrep", "-x", "xray" ]) ||
+        command_success_from_args([ "pgrep", "-x", "Xray" ]) ||
+        command_success("pgrep -f '/usr/bin/xray'");
+}
+
 function forkop_running() {
     return module_success(LIB_DIR + "/service/state.uc", [
         "forkop-stably-running",
@@ -1031,6 +1054,7 @@ function capability_flags() {
         zapret_installed: file_executable(ZAPRET_PROVIDER_NFQWS_BIN) ? 1 : 0,
         zapret2_installed: file_executable(ZAPRET2_PROVIDER_NFQWS2_BIN) ? 1 : 0,
         byedpi_installed: file_executable(BYEDPI_BIN) ? 1 : 0,
+        xray_installed: file_executable(XRAY_BIN) ? 1 : 0,
         server_inbounds_enabled_count: 0
     };
 
@@ -1083,6 +1107,11 @@ function current_ui_state_json() {
     let sing_box_is_enabled = sing_box_enabled() ? 1 : 0;
     let forkop_status = service_status_text(forkop_is_running, forkop_is_enabled);
     let sing_box_status = service_status_text(sing_box_is_running, sing_box_is_enabled);
+    let xray_is_running = xray_running() ? 1 : 0;
+    let xray_is_installed = file_executable(XRAY_BIN) ? 1 : 0;
+    let xray_status = xray_is_installed
+        ? service_status_text(xray_is_running, 0)
+        : "not installed";
     let active_action = active_service_action_value();
 
     if (active_action == "start")
@@ -1106,6 +1135,11 @@ function current_ui_state_json() {
                 running: sing_box_is_running,
                 enabled: sing_box_is_enabled,
                 status: sing_box_status
+            },
+            xray: {
+                running: xray_is_running,
+                enabled: 0,
+                status: xray_status
             }
         },
         capabilities,

@@ -105,8 +105,8 @@ reload_stable_min_age_line="$(awk -v start="$sing_box_reload_line" 'NR > start &
   fail "service/lifecycle.uc must reload sing-box through service/state.uc"
 [ -n "$reload_stable_min_age_line" ] ||
   fail "service/lifecycle.uc must use the dedicated sing-box start stability window after sing-box reload"
-grep -Fq 'Reload verification failed after sing-box was reloaded; stopping Forkop runtime' "$LIFECYCLE_UC" ||
-  fail "service/lifecycle.uc must fail reload when sing-box does not stay stable"
+grep -Fq 'Reload verification failed after sing-box was reloaded; restarting Forkop runtime' "$LIFECYCLE_UC" ||
+  fail "service/lifecycle.uc must recover a failed sing-box reload through a full runtime restart"
 grep -Fq 'Reload runtime restart verification failed after Forkop was started; rolling back DNS changes' "$LIFECYCLE_UC" ||
   fail "service/lifecycle.uc must fail full runtime restart when sing-box does not stay stable"
 if grep -n -E 'require\("uci"\)\.cursor|uci -q|uci", "-q"|uci_get_cli|uci_exists_cli|mwan3_has_enabled_interface_from_uci_show' "$STATE_UC" >/dev/null 2>&1; then

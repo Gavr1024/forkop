@@ -602,6 +602,42 @@ function validate_download_section_rows(target_section, byedpi_installed, zapret
             "', but it cannot provide an outbound. Select an enabled Connection, Zapret, Zapret2, or ByeDPI rule with its provider installed, or disable the option. Aborted.");
 }
 
+function validate_router_traffic_section_rows(target_section, byedpi_installed, zapret_installed, zapret2_installed, rows) {
+    target_section = as_string(target_section);
+
+    if (target_section == "")
+        fail_validation("Routing the router's own traffic is enabled, but no section is selected. Aborted.");
+
+    let found = false;
+    let enabled = false;
+    let outbound = false;
+
+    for (let row in array_or_empty(rows)) {
+        if (row.section != target_section)
+            continue;
+
+        found = true;
+        if (!row.enabled)
+            continue;
+
+        enabled = true;
+        if (download_section_action_available(row.action, byedpi_installed, zapret_installed, zapret2_installed))
+            outbound = true;
+    }
+
+    if (!found)
+        fail_validation("Routing the router's own traffic references missing rule '" + target_section +
+            "'. Select an enabled rule that can provide an outbound or disable the option. Aborted.");
+
+    if (!enabled)
+        fail_validation("Routing the router's own traffic references disabled rule '" + target_section +
+            "'. Select an enabled rule that can provide an outbound or disable the option. Aborted.");
+
+    if (!outbound)
+        fail_validation("Routing the router's own traffic references rule '" + target_section +
+            "', but it cannot provide an outbound. Select an enabled Connection, Zapret, Zapret2, or ByeDPI rule with its provider installed, or disable the option. Aborted.");
+}
+
 function validate_download_section(target_section, byedpi_installed, zapret_installed, zapret2_installed) {
     validate_download_section_rows(target_section, byedpi_installed, zapret_installed, zapret2_installed, basic_rule_rows());
 }
@@ -1275,7 +1311,11 @@ function outbound_json_object(value) {
 
 function valid_outbound_json(value) {
     value = outbound_json_object(value);
-    return value != null && type(value.type) == "string" && trim(as_string(value.type)) != "";
+    if (value == null)
+        return false;
+    if (type(value.type) == "string" && trim(as_string(value.type)) != "")
+        return true;
+    return type(value.protocol) == "string" && trim(as_string(value.protocol)) != "";
 }
 
 function validate_outbound_json_rule(section) {
@@ -1286,7 +1326,7 @@ function validate_outbound_json_rule(section) {
         fail_validation("JSON outbound rule '" + name + "' has empty outbound_json. Aborted.");
 
     if (!valid_outbound_json(outbound_json))
-        fail_validation("JSON outbound rule '" + name + "' must contain a valid sing-box outbound JSON object with a type field. Aborted.");
+        fail_validation("JSON outbound rule '" + name + "' must contain a valid sing-box or Xray outbound JSON object with a type or protocol field. Aborted.");
 }
 
 function validate_outbound_json_values(section) {
@@ -1300,7 +1340,7 @@ function validate_outbound_json_values(section) {
             fail_validation("Connection rule '" + name + "' has empty JSON outbound. Aborted.");
 
         if (!valid_outbound_json(value))
-            fail_validation("Connection rule '" + name + "' must contain valid sing-box outbound JSON objects with a type field. Aborted.");
+            fail_validation("Connection rule '" + name + "' must contain valid sing-box or Xray outbound JSON objects with a type or protocol field. Aborted.");
 
         let outbound = outbound_json_object(value);
         let tag_name = trim(as_string(outbound.tag || ""));
@@ -1447,6 +1487,14 @@ function validate_rule(section, sections, context) {
     }
 
     if (connections.is_connections_action(action)) {
+        let core = connections.proxy_core(section);
+        if (core != "sing-box" && core != "xray")
+            fail_validation("Connection rule '" + name + "' has unsupported proxy core '" + core + "'. Aborted.");
+        if (core == "xray" && !context.xray_installed)
+            fail_validation("Connection rule '" + name + "' uses Xray, but Xray is not installed. Install it from Components or switch the section core to sing-box. Aborted.");
+    }
+
+    if (connections.is_connections_action(action)) {
         validate_dashboard_filter(section);
 
         for (let urltest_id in connections.urltests(section)) {
@@ -1552,6 +1600,12 @@ function download_via_proxy_section(settings, purpose) {
 function download_via_proxy_enabled(settings, purpose) {
     let enabled_option = download_via_proxy_option_for_purpose(purpose);
     return enabled_option != "" && bool_option(settings, enabled_option, false);
+}
+
+function router_traffic_section(settings) {
+    if (!bool_option(settings, "route_router_traffic", false))
+        return "";
+    return option(settings, "route_router_traffic_section", "");
 }
 
 function basic_rows_from_sections(sections) {
@@ -1721,6 +1775,18 @@ function validate_runtime_config(context) {
             basic_rows_from_sections(sections)
         );
     }
+    if (bool_option(settings, "route_router_traffic", false)) {
+        let target = router_traffic_section(settings);
+        if (target != "") {
+            validate_router_traffic_section_rows(
+                target,
+                context.byedpi_installed,
+                context.zapret_installed,
+                context.zapret2_installed,
+                basic_rows_from_sections(sections)
+            );
+        }
+    }
 
     validate_outbound_detours_rows(detour_rows_from_sections(sections));
     validate_subscription_download_sections(sections, context);
@@ -1741,6 +1807,7 @@ function context_from_runtime() {
         zapret_legacy_default_nfqws_opt: constant_value(constants, "ZAPRET_LEGACY_DEFAULT_NFQWS_OPT"),
         zapret2_default_nfqws2_opt: constant_value(constants, "ZAPRET2_DEFAULT_NFQWS2_OPT"),
         byedpi_installed: file_executable(constant_value(constants, "BYEDPI_BIN")),
+        xray_installed: file_executable(constant_value(constants, "XRAY_BIN")),
         zapret_installed: file_executable(constant_value(constants, "ZAPRET_PROVIDER_NFQWS_BIN")),
         zapret2_installed: file_executable(constant_value(constants, "ZAPRET2_PROVIDER_NFQWS2_BIN")),
         zapret_provider_nfqws_bin: constant_value(constants, "ZAPRET_PROVIDER_NFQWS_BIN"),
@@ -2099,6 +2166,7 @@ function context_from_json(value, defaults) {
         zapret_legacy_default_nfqws_opt: context_override_value(value, defaults, "zapret_legacy_default_nfqws_opt"),
         zapret2_default_nfqws2_opt: context_override_value(value, defaults, "zapret2_default_nfqws2_opt"),
         byedpi_installed: context_override_bool(value, defaults, "byedpi_installed"),
+        xray_installed: context_override_bool(value, defaults, "xray_installed"),
         zapret_installed: context_override_bool(value, defaults, "zapret_installed"),
         zapret2_installed: context_override_bool(value, defaults, "zapret2_installed"),
         zapret_route_mark_base: context_override_value(value, defaults, "zapret_route_mark_base"),

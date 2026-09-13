@@ -645,8 +645,40 @@ function last_nonblank_line(path) {
 }
 
 function generator_failure_reason(path, status) {
-    let reason = last_nonblank_line(path);
-    return reason != "" ? reason : "exit status " + status;
+    let data = as_string(fs.readfile(path) || "");
+    let lines = [];
+    for (let line in split(data, "\n")) {
+        line = trim(as_string(line));
+        if (line != "")
+            push(lines, line);
+    }
+    if (length(lines) == 0)
+        return "exit status " + status;
+
+    let i = 0;
+    while (i < length(lines)) {
+        let line = lines[i];
+        let lower = lc(line);
+        if (index(lower, "error") >= 0 ||
+            index(lower, "unsupported") >= 0 ||
+            index(lower, "failed") >= 0 ||
+            index(lower, "syntax") >= 0 ||
+            index(lower, "runtime") >= 0) {
+            let extra = "";
+            if (i + 1 < length(lines)) {
+                let nxt = lc(lines[i + 1]);
+                if (index(nxt, "file") >= 0 || index(nxt, "line") >= 0 || index(nxt, "near") >= 0)
+                    extra = " | " + lines[i + 1];
+            }
+            return line + extra;
+        }
+        i = i + 1;
+    }
+
+    let first = lines[0];
+    if (index(first, "Near here") >= 0 || match(first, /^\s*\^/) != null)
+        return first;
+    return first;
 }
 
 function log_file_lines(path, level, prefix) {

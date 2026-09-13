@@ -72,6 +72,9 @@ function constants_map() {
     c.SB_SERVICE_MIXED_INBOUND_TAG = env("SB_SERVICE_MIXED_INBOUND_TAG", "service-mixed-in");
     c.SB_SERVICE_MIXED_INBOUND_ADDRESS = env("SB_SERVICE_MIXED_INBOUND_ADDRESS", "127.0.0.1");
     c.SB_SERVICE_MIXED_INBOUND_PORT = env("SB_SERVICE_MIXED_INBOUND_PORT", "4534");
+    c.SB_REDIRECT_INBOUND_TAG = env("SB_REDIRECT_INBOUND_TAG", "redirect-in");
+    c.SB_REDIRECT_INBOUND_ADDRESS = env("SB_REDIRECT_INBOUND_ADDRESS", "127.0.0.1");
+    c.SB_REDIRECT_INBOUND_PORT = env("SB_REDIRECT_INBOUND_PORT", "1604");
     c.SB_DIRECT_OUTBOUND_TAG = env("SB_DIRECT_OUTBOUND_TAG", "direct-out");
     c.SB_BYPASS_OUTBOUND_TAG = env("SB_BYPASS_OUTBOUND_TAG", "bypass-out");
     c.SB_CLASH_API_CONTROLLER_PORT = env("SB_CLASH_API_CONTROLLER_PORT", "9090");
@@ -143,6 +146,19 @@ function constants_map() {
     c.BYEDPI_RESPAWN_DELAY = env("BYEDPI_RESPAWN_DELAY", "5");
     c.BYEDPI_OPEN_FILES_LIMIT = env("BYEDPI_OPEN_FILES_LIMIT", "4096");
     c.BYEDPI_DEFAULT_CMD_OPTS = env("BYEDPI_DEFAULT_CMD_OPTS", "-o 2 --auto=t,r,a,s -d 2");
+
+    c.XRAY_BIN = env("XRAY_BIN", "/usr/bin/xray");
+    c.XRAY_CONFIG = env("XRAY_CONFIG", "/etc/xray/config.json");
+    c.XRAY_SERVICE_INIT = env("XRAY_SERVICE_INIT", "/etc/init.d/xray");
+    c.XRAY_MANAGED_SERVICE_MARKER = env("XRAY_MANAGED_SERVICE_MARKER", "Forkop managed xray service");
+    c.XRAY_SOCKS_LISTEN = env("XRAY_SOCKS_LISTEN", "127.0.0.1");
+    c.XRAY_SOCKS_PORT_BASE = env("XRAY_SOCKS_PORT_BASE", "10808");
+    c.XRAY_STATE_DIR = env("XRAY_STATE_DIR", "/var/run/forkop/xray");
+    c.XRAY_PORTS_FILE = env("XRAY_PORTS_FILE", "/var/run/forkop/xray-ports.json");
+    c.XRAY_VERSION_STATE_FILE = env("XRAY_VERSION_STATE_FILE", "/etc/forkop/xray-version");
+    c.XRAY_RELEASE_REPO = env("XRAY_RELEASE_REPO", "XTLS/Xray-core");
+    c.XRAY_REQUIRED_VERSION = env("XRAY_REQUIRED_VERSION", "24.12.0");
+    c.TMP_XRAY_FOLDER = env("TMP_XRAY_FOLDER", "/tmp/xray");
 
     return c;
 }

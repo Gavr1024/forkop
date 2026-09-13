@@ -46,6 +46,12 @@ export const DNS_SERVER_OPTIONS = {
   '1.1.1.1': '1.1.1.1 (Cloudflare)',
   '8.8.8.8': '8.8.8.8 (Google)',
   '9.9.9.9': '9.9.9.9 (Quad9)',
+  '77.88.8.8': '77.88.8.8 (Yandex DNS)',
+  '77.88.8.1': '77.88.8.1 (Yandex DNS)',
+  '208.67.222.222': '208.67.222.222 (OpenDNS)',
+  '208.67.220.220': '208.67.220.220 (OpenDNS)',
+  '223.5.5.5': '223.5.5.5 (AliDNS)',
+  '223.6.6.6': '223.6.6.6 (AliDNS)',
   'dns.adguard-dns.com': 'dns.adguard-dns.com (AdGuard Default)',
   'unfiltered.adguard-dns.com':
     'unfiltered.adguard-dns.com (AdGuard Unfiltered)',
@@ -60,6 +66,10 @@ export const BOOTSTRAP_DNS_SERVER_OPTIONS = {
   '8.8.4.4': '8.8.4.4 (Google DNS)',
   '9.9.9.9': '9.9.9.9 (Quad9 DNS)',
   '9.9.9.11': '9.9.9.11 (Quad9 DNS)',
+  '208.67.222.222': '208.67.222.222 (OpenDNS)',
+  '208.67.220.220': '208.67.220.220 (OpenDNS)',
+  '223.5.5.5': '223.5.5.5 (AliDNS)',
+  '223.6.6.6': '223.6.6.6 (AliDNS)',
 };
 
 export const COMMAND_TIMEOUT = 10000; // 10 seconds

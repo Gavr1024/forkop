@@ -309,6 +309,13 @@ function action(section) {
     return normalize_action(option(section, "action", ""));
 }
 
+function proxy_core(section) {
+    let value = lc(as_string(option(section, "proxy_core", "sing-box")));
+    if (value == "xray" || value == "xray-core")
+        return "xray";
+    return "sing-box";
+}
+
 function connection_urls(section) {
     return whitespace_list_value(section, "selector_proxy_links");
 }
@@ -1089,6 +1096,7 @@ return {
     is_connections_action,
     normalize_action,
     action,
+    proxy_core,
     connection_urls,
     subscription_urls,
     interfaces,

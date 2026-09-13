@@ -18,12 +18,18 @@ function bool_value(value) {
 function config(settings, runtime) {
     let output_network_interface = option(settings, "output_network_interface", "");
     let mwan3_active = type(runtime) == "object" && bool_value(runtime.mwan3_active);
-    let sniff_inbounds = [ runtime_constants.TPROXY_INBOUND_TAG, runtime_constants.DNS_INBOUND_TAG ];
+    let sniff_inbounds = [
+        runtime_constants.TPROXY_INBOUND_TAG,
+        runtime_constants.TPROXY_INBOUND6_TAG,
+        runtime_constants.DNS_INBOUND_TAG
+    ];
     if (type(runtime) == "object" && bool_value(runtime.source_aware_dns))
         push(sniff_inbounds, runtime_constants.SOURCE_DNS_INBOUND_TAG);
     if (type(runtime) == "object" && type(runtime.dns_health_inbounds) == "array")
         for (let inbound in runtime.dns_health_inbounds)
             push(sniff_inbounds, inbound);
+    if (bool_option(settings, "route_router_traffic", false) && option(settings, "route_router_traffic_section", "") != "")
+        push(sniff_inbounds, runtime_constants.REDIRECT_INBOUND_TAG);
     let result = {
         rules: [
             { action: "sniff", inbound: sniff_inbounds },
@@ -43,6 +49,13 @@ function config(settings, runtime) {
         result.default_interface = output_network_interface;
     if (bool_option(settings, "disable_quic", false))
         push(result.rules, { action: "reject", inbound: runtime_constants.TPROXY_INBOUND_TAG, protocol: "quic" });
+
+    if (bool_option(settings, "exclude_bittorrent", false))
+        push(result.rules, {
+            action: "route",
+            protocol: "bittorrent",
+            outbound: runtime_constants.BYPASS_OUTBOUND_TAG
+        });
 
     return result;
 }

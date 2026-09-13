@@ -1617,10 +1617,59 @@ async function renderSystemInfoWidget() {
         key: _('Memory Usage'),
         value: String(prettyBytes(systemInfoWidget.data.memory)),
       },
+      ...getDashboardCoresSummaryItems(),
     ],
   });
 
   container.replaceChildren(renderedWidget);
+}
+
+function getDashboardCoresSummaryItems() {
+  const sectionsWidget = store.get().sectionsWidget;
+  if (sectionsWidget.loading || sectionsWidget.failed) {
+    return [];
+  }
+
+  let xrayOutbounds = 0;
+  let singboxOutbounds = 0;
+
+  for (const section of sectionsWidget.data) {
+    const outboundCount = section.outbounds.length;
+    if (section.proxyCore === 'xray') {
+      xrayOutbounds += outboundCount;
+    } else {
+      singboxOutbounds += outboundCount;
+    }
+  }
+
+  return [
+    {
+      key: _('Cores'),
+      value: `sing-box ${singboxOutbounds} · Xray ${xrayOutbounds}`,
+    },
+  ];
+}
+
+function getXrayServiceRow(data: StoreType['servicesInfoWidget']['data']) {
+  if (!data.xrayInstalled) {
+    return {
+      key: 'Xray',
+      value: _('✘ Not installed'),
+      attributes: {
+        class: 'fkp_dashboard-page__widgets-section__item__row--warning',
+      },
+    };
+  }
+
+  return {
+    key: 'Xray',
+    value: data.xray ? _('✔ Running') : _('✘ Stopped'),
+    attributes: {
+      class: data.xray
+        ? 'fkp_dashboard-page__widgets-section__item__row--success'
+        : 'fkp_dashboard-page__widgets-section__item__row--error',
+    },
+  };
 }
 
 async function renderServicesInfoWidget() {
@@ -1671,6 +1720,7 @@ async function renderServicesInfoWidget() {
             : 'fkp_dashboard-page__widgets-section__item__row--error',
         },
       },
+      getXrayServiceRow(servicesInfoWidget.data),
     ],
   });
 
@@ -1691,6 +1741,9 @@ async function onStoreUpdate(
 
     if (!inlineUpdated) {
       renderSectionsWidget();
+    }
+    if (!store.get().systemInfoWidget.loading) {
+      renderSystemInfoWidget();
     }
   }
 

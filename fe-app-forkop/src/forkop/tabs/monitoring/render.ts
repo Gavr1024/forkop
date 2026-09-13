@@ -28,6 +28,15 @@ export function render() {
               },
               `${_('Closed')} 0`,
             ),
+            E(
+              'button',
+              {
+                id: 'monitoring-tab-cores',
+                class: 'btn cbi-button fkp_monitoring-page__tab',
+                type: 'button',
+              },
+              `${_('Cores')} 0`,
+            ),
           ]),
           E('div', { class: 'fkp_monitoring-page__filters' }, [
             E(

@@ -6729,7 +6729,8 @@ function addLocalDeviceSubnetDynamicField(section, config) {
       return true;
     }
 
-    const validation = main.validateSubnet(value);
+    const resolved = localDevices.resolveLocalDeviceListValue(value);
+    const validation = main.validateSubnet(resolved);
     return validation.valid ? true : validation.message;
   };
   o.load = function (section_id) {
@@ -6742,7 +6743,10 @@ function addLocalDeviceSubnetDynamicField(section, config) {
     return legacyText ? main.parseValueList(legacyText) : [];
   };
   o.write = function (section_id, value) {
-    writeListOption(section_id, config.key, value);
+    const resolved = normalizeOptionValues(value).map((item) =>
+      localDevices.resolveLocalDeviceListValue(item),
+    );
+    writeListOption(section_id, config.key, resolved);
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
   };
@@ -7012,6 +7016,25 @@ function createSectionContent(section) {
       return this.cfgvalue(section_id);
     });
   };
+
+  o = section.taboption(
+    "settings",
+    form.ListValue,
+    "proxy_core",
+    _("Proxy core"),
+    _(
+      "Which core handles this section. Xray sections are connected through a local SOCKS sidecar so sing-box keeps FakeIP, DNS and nft routing.",
+    ),
+  );
+  o.value("sing-box", "sing-box");
+  o.value("xray", "Xray");
+  o.default = "sing-box";
+  o.rmempty = true;
+  o.modalonly = true;
+  o.depends("action", "connection");
+  o.depends("action", "proxy");
+  o.depends("action", "outbound");
+  o.depends("action", "vpn");
 
   o = section.taboption(
     "settings",
@@ -7712,13 +7735,14 @@ function createSectionContent(section) {
 
   const builtInRulesetOption = section.taboption(
     "conditions",
-    form.DynamicList,
+    form.MultiValue,
     "community_lists",
     _("Built-in rule sets"),
-    _("Select a predefined domain list"),
+    _("Tick every predefined list you need. Selected lists are added together."),
   );
   builtInRulesetOption.modalonly = true;
-  builtInRulesetOption.placeholder = _("Service list");
+  builtInRulesetOption.create = false;
+  builtInRulesetOption.placeholder = _("Service lists");
   builtInRulesetOption.load = function (section_id) {
     loadRulesetValues(this);
     return getBuiltInRulesetReferences(section_id);
@@ -7851,6 +7875,16 @@ function createSectionContent(section) {
   dependsOnRoutingAction(fullyRoutedOption);
   fullyRoutedOption.depends("action", "dns");
   makeDeviceOptionsExclusive(sourceIpOption, fullyRoutedOption);
+
+  const excludedSourceOption = addLocalDeviceSubnetDynamicField(section, {
+    key: "excluded_source_ips",
+    label: _("Excluded devices"),
+    description: _(
+      "Do not apply this section to the specified local IP addresses or subnets. Other sections still apply.",
+    ),
+  });
+  dependsOnRoutingAction(excludedSourceOption);
+  excludedSourceOption.depends("action", "dns");
 
   const portsOption = addDynamicConditionField(section, {
     key: "ports",

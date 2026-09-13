@@ -7,6 +7,7 @@ import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
 import { runZapret2Check } from './checks/runZapret2Check';
 import { runByedpiCheck } from './checks/runByedpiCheck';
+import { runXrayCheck } from './checks/runXrayCheck';
 import {
   DIAGNOSTICS_CHECKS,
   DIAGNOSTICS_CHECKS_MAP,
@@ -66,8 +67,10 @@ import {
 } from './diagnosticRunPersistence';
 import {
   formatMaskedSingBoxConfig,
+  formatMaskedXrayConfig,
   maskGlobalCheckText,
   stringifySingBoxConfig,
+  stringifyXrayConfig,
 } from './helpers/maskDiagnostics';
 
 const SERVICE_STATUS_REFRESH_INTERVAL_MS = 2000;
@@ -100,6 +103,7 @@ function getDiagnosticsProviderOptions(
     | 'zapret_installed'
     | 'zapret2_installed'
     | 'byedpi_installed'
+    | 'xray_installed'
     | 'server_inbounds_enabled_count'
   > = store.get().diagnosticsSystemInfo,
 ): DiagnosticsProviderOptions {
@@ -107,6 +111,7 @@ function getDiagnosticsProviderOptions(
     includeZapret: Boolean(systemInfo.zapret_installed),
     includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
+    includeXray: true,
     includeInbounds: systemInfo.server_inbounds_enabled_count > 0,
   };
 }
@@ -373,6 +378,7 @@ async function fetchDiagnosticsProviderInfo({
         zapret_installed: uiState.capabilities.zapret_installed,
         zapret2_installed: uiState.capabilities.zapret2_installed,
         byedpi_installed: uiState.capabilities.byedpi_installed,
+        xray_installed: uiState.capabilities.xray_installed,
         server_inbounds_enabled_count:
           uiState.capabilities.server_inbounds_enabled_count,
       });
@@ -387,6 +393,10 @@ async function fetchDiagnosticsProviderInfo({
 
       if (!nextSystemInfo.byedpi_installed) {
         nextSystemInfo.byedpi_version = 'not installed';
+      }
+
+      if (!nextSystemInfo.xray_installed) {
+        nextSystemInfo.xray_version = 'not installed';
       }
 
       const nextState: Partial<StoreType> = {
@@ -409,11 +419,12 @@ async function fetchDiagnosticsProviderInfo({
       return;
     }
 
-    const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] =
+    const [zapretRuntime, zapret2Runtime, byedpiRuntime, xrayCheck, inboundsConfig] =
       await Promise.all([
         ForkopShellMethods.checkZapretRuntime(),
         ForkopShellMethods.checkZapret2Runtime(),
         ForkopShellMethods.checkByedpiRuntime(),
+        ForkopShellMethods.checkXray(),
         ForkopShellMethods.checkInboundsConfig(),
       ]);
 
@@ -434,6 +445,9 @@ async function fetchDiagnosticsProviderInfo({
       byedpi_installed: byedpiRuntime.success
         ? byedpiRuntime.data.byedpi_installed
         : currentSystemInfo.byedpi_installed,
+      xray_installed: xrayCheck.success
+        ? xrayCheck.data.xray_installed
+        : currentSystemInfo.xray_installed,
       server_inbounds_enabled_count: inboundsConfig.success
         ? inboundsConfig.data.enabled_count
         : -1,
@@ -455,6 +469,10 @@ async function fetchDiagnosticsProviderInfo({
       logger.error('[DIAGNOSTIC]', 'fetchByedpiRuntime failed', byedpiRuntime);
     }
 
+    if (!xrayCheck.success) {
+      logger.error('[DIAGNOSTIC]', 'fetchXrayCheck failed', xrayCheck);
+    }
+
     if (!inboundsConfig.success) {
       logger.error(
         '[DIAGNOSTIC]',
@@ -473,6 +491,10 @@ async function fetchDiagnosticsProviderInfo({
 
     if (!nextSystemInfo.byedpi_installed) {
       nextSystemInfo.byedpi_version = 'not installed';
+    }
+
+    if (!nextSystemInfo.xray_installed) {
+      nextSystemInfo.xray_version = 'not installed';
     }
 
     const nextState: Partial<StoreType> = {
@@ -769,6 +791,34 @@ async function handleShowSingBoxConfig() {
   }
 }
 
+async function handleShowXrayConfig() {
+  setDiagnosticActionLoading('showXrayConfig', true);
+
+  try {
+    const showXrayConfig = await ForkopShellMethods.showXrayConfig(false);
+
+    if (showXrayConfig.success) {
+      const rawXrayConfigText = stringifyXrayConfig(showXrayConfig.data);
+      const maskedXrayConfigText = formatMaskedXrayConfig(showXrayConfig.data);
+
+      ui.showModal(
+        _('Show Xray config'),
+        renderModal(rawXrayConfigText, 'show_xray_config', {
+          maskText: () => maskedXrayConfigText,
+          initialAutoRefresh: false,
+          showMaskValuesToggle: true,
+        }),
+      );
+    } else {
+      logger.error('[DIAGNOSTIC]', 'handleShowXrayConfig - e', showXrayConfig);
+    }
+  } catch (e) {
+    logger.error('[DIAGNOSTIC]', 'handleShowXrayConfig - e', e);
+  } finally {
+    setDiagnosticActionLoading('showXrayConfig', false);
+  }
+}
+
 function renderWikiDisclaimerWidget() {
   const diagnosticsChecks = store.get().diagnosticsChecks;
 
@@ -892,6 +942,12 @@ function renderDiagnosticAvailableActionsWidget() {
       onClick: handleShowSingBoxConfig,
       disabled: utilityActionsDisabled,
     },
+    showXrayConfig: {
+      loading: diagnosticsActions.showXrayConfig.loading,
+      visible: true,
+      onClick: handleShowXrayConfig,
+      disabled: utilityActionsDisabled,
+    },
   });
 
   return preserveScrollForPage(() => {
@@ -917,6 +973,10 @@ function renderDiagnosticSystemInfoWidget() {
     {
       key: 'Sing-box',
       value: formatSingBoxVersion(diagnosticsSystemInfo),
+    },
+    {
+      key: 'Xray',
+      value: diagnosticsSystemInfo.xray_version || _('Not installed'),
     },
   ];
 
@@ -1033,6 +1093,7 @@ function getDiagnosticRunners(
   return [
     { code: DIAGNOSTICS_CHECKS.DNS, run: runDnsCheck },
     { code: DIAGNOSTICS_CHECKS.SINGBOX, run: runSingBoxCheck },
+    { code: DIAGNOSTICS_CHECKS.XRAY, run: runXrayCheck },
     ...(providerOptions.includeInbounds
       ? [{ code: DIAGNOSTICS_CHECKS.INBOUNDS, run: runInboundsCheck }]
       : []),

@@ -3,6 +3,7 @@
 let fs = require("fs");
 let uci_core = require("core.uci");
 let connections = require("config.connections");
+let list_cache = require("routing.list_cache");
 const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
 const BIN_PATH = getenv("FORKOP_BIN") || "/usr/bin/forkop";
@@ -1367,7 +1368,7 @@ function normalize_component_name(component) {
 function valid_component_name(component) {
     component = normalize_component_name(component);
     return component == "forkop" || component == "sing_box" || component == "zapret" ||
-        component == "zapret2" || component == "byedpi";
+        component == "zapret2" || component == "byedpi" || component == "xray";
 }
 
 function component_update_check_cache_path(component) {
@@ -1473,7 +1474,7 @@ function component_update_check_cache() {
     let results = [];
 
     if (enabled) {
-        for (let component in [ "forkop", "sing_box", "zapret", "zapret2", "byedpi" ]) {
+        for (let component in [ "forkop", "sing_box", "zapret", "zapret2", "byedpi", "xray" ]) {
             let value = read_json_file(component_update_check_cache_path(component));
             if (component_update_check_result_cacheable(value))
                 push(results, value);
@@ -1821,6 +1822,8 @@ function automatic_component_check_names() {
         push(result, "zapret2");
     if (module_success([ LIB_DIR + "/providers/byedpi/runtime.uc", "installed" ]))
         push(result, "byedpi");
+    if (fs.stat("/usr/bin/xray") != null)
+        push(result, "xray");
 
     return result;
 }
@@ -2498,6 +2501,10 @@ function list_update() {
     log_message("Downloading and processing lists", "info");
     let sections = uci_sections("section");
     let ok = true;
+    if (list_cache.persist_enabled(settings) && !list_cache.ensure_download_section_up(settings)) {
+        log_message("Download section is not ready; local list cache will keep previous copies if any", "warn");
+        ok = false;
+    }
 
     for (let section in sections)
         if (!rebuild_domain_ip_lists_from_rule(section, settings))
@@ -2514,6 +2521,20 @@ function list_update() {
     for (let section in sections)
         if (!import_rule_sets_with_subnets_from_rule(section, settings))
             ok = false;
+
+    if (list_cache.persist_enabled(settings)) {
+        let persist_result = list_cache.persist_selected_lists(settings, proxy_address);
+        if (type(persist_result) == "object") {
+            if (!persist_result.ok)
+                ok = false;
+            if (persist_result.changed) {
+                mark_pending_reload("local_list_cache");
+            }
+        }
+        else if (!persist_result) {
+            ok = false;
+        }
+    }
 
     if (ok) {
         write_list_update_timestamp(now_seconds());
@@ -2898,6 +2919,14 @@ else if (mode == "remove-cron-jobs")
     remove_cron_jobs(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "list-update")
     list_update();
+else if (mode == "list-cache-status")
+    list_cache.print_status_json();
+else if (mode == "list-cache-persist") {
+    let persist_result = list_cache.persist_selected_lists();
+    if (type(persist_result) == "object")
+        exit(persist_result.ok ? 0 : 1);
+    exit(persist_result ? 0 : 1);
+}
 else if (mode == "list-update-if-due")
     list_update_if_due();
 else if (mode == "stop-list-update")

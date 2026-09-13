@@ -63,6 +63,16 @@ function show_help() {
     print("    main                    Run main Forkop process\n");
     print("    list_update             Update remote lists\n");
     print("    list_update_if_due      Update remote lists only when the configured interval has elapsed\n");
+    print("    list_cache_status       Show locally cached lists as JSON\n");
+    print("    list_cache_persist      Download selected lists to flash cache\n");
+    print("    slot_status             Show config slot status as JSON\n");
+    print("    slot_save <online|offline>\n");
+    print("                            Save current config into a slot\n");
+    print("    slot_apply <online|offline>\n");
+    print("                            Apply a saved slot and reload Forkop\n");
+    print("    slot_configure          Save auto-switch settings\n");
+    print("    slot_probe              Check ping and switch slots if needed\n");
+    print("    slot_probe_if_due       Probe only when the configured interval elapsed\n");
     print("    subscription_update [rule] [source_index]\n");
     print("                            Update all subscription proxies, one rule, or one source in a rule\n");
     print("    subscription_update_async [rule] [source_index]\n");
@@ -75,6 +85,7 @@ function show_help() {
     print("    check_nft               Check NFT rules\n");
     print("    check_nft_rules         Check NFT rules status\n");
     print("    check_sing_box          Check sing-box installation and status\n");
+    print("    check_xray              Check Xray-core installation and status\n");
     print("    check_inbounds_config   Check whether enabled server inbounds are configured\n");
     print("    check_inbounds          Check server inbounds from the Servers tab\n");
     print("    check_logs              Show Forkop logs from system journal\n");
@@ -89,12 +100,14 @@ function show_help() {
     print("    show_config             Display current Forkop configuration\n");
     print("    show_version            Show Forkop version\n");
     print("    show_sing_box_config    Show sing-box configuration\n");
+    print("    show_xray_config        Show Xray configuration\n");
     print("    show_sing_box_version   Show sing-box version\n");
     print("    get_status              Get Forkop service status\n");
     print("    get_outbound_metadata   Get generated outbound display names and countries\n");
     print("    get_subscription_metadata\n");
     print("                            Get UI-only metadata for a subscription rule\n");
     print("    get_sing_box_status     Get sing-box service status\n");
+    print("    get_xray_status         Get Xray-core service status\n");
     print("    get_zapret_status       Get zapret provider and Forkop-managed nfqws status\n");
     print("    get_zapret2_status      Get zapret2 provider and Forkop-managed nfqws2 status\n");
     print("    get_byedpi_status       Get ByeDPI provider and Forkop-managed ciadpi status\n");
@@ -111,7 +124,7 @@ function show_help() {
     print("                            Generate a sing-box Reality key pair in JSON format\n");
     print("    get_tls_certificate_sha256 [server]\n");
     print("                            Get a server TLS certificate SHA-256 fingerprint in JSON format\n");
-    print("    component_action        Manage Forkop, sing-box, zapret, zapret2, and ByeDPI components\n");
+    print("    component_action        Manage Forkop, sing-box, Xray, zapret, zapret2, and ByeDPI components\n");
     print("    component_action_async  Start a component action in the background\n");
     print("    component_action_status Get background component action status\n");
     print("    component_updates_if_due Check installed components for updates when due\n");
@@ -141,6 +154,14 @@ function command_spec(command) {
         main: [ "service/lifecycle.uc", "main", 0 ],
         list_update: [ "components/updates.uc", "list-update", 0 ],
         list_update_if_due: [ "components/updates.uc", "list-update-if-due", 0 ],
+        list_cache_status: [ "components/updates.uc", "list-cache-status", 0 ],
+        list_cache_persist: [ "components/updates.uc", "list-cache-persist", 0 ],
+        slot_status: [ "config/slots.uc", "status-json", 0 ],
+        slot_save: [ "config/slots.uc", "save", 1 ],
+        slot_apply: [ "config/slots.uc", "apply", 1 ],
+        slot_configure: [ "config/slots.uc", "configure", 5 ],
+        slot_probe: [ "config/slots.uc", "probe", 2 ],
+        slot_probe_if_due: [ "config/slots.uc", "probe-if-due", 0 ],
         subscription_update: [ "components/updates.uc", "subscription-update", 2 ],
         subscription_update_async: [ "components/updates.uc", "subscription-update-async", 2 ],
         subscription_update_status: [ "components/updates.uc", "subscription-update-status", 1 ],
@@ -149,6 +170,7 @@ function command_spec(command) {
         check_nft: [ "diagnostics/runtime.uc", "check-nft", 0 ],
         check_nft_rules: [ "diagnostics/runtime.uc", "check-nft-rules", 0 ],
         check_sing_box: [ "diagnostics/runtime.uc", "check-sing-box", 0 ],
+        check_xray: [ "diagnostics/runtime.uc", "check-xray", 0 ],
         check_inbounds_config: [ "diagnostics/runtime.uc", "check-inbounds-config", 0 ],
         check_inbounds: [ "diagnostics/runtime.uc", "check-inbounds", 0 ],
         check_logs: [ "diagnostics/runtime.uc", "check-logs", 0 ],
@@ -162,11 +184,13 @@ function command_spec(command) {
         show_config: [ "diagnostics/runtime.uc", "show-config", 1 ],
         show_version: [ "diagnostics/runtime.uc", "show-version", 0 ],
         show_sing_box_config: [ "diagnostics/runtime.uc", "show-sing-box-config", 1 ],
+        show_xray_config: [ "diagnostics/runtime.uc", "show-xray-config", 1 ],
         show_sing_box_version: [ "diagnostics/runtime.uc", "show-sing-box-version", 0 ],
         get_status: [ "diagnostics/runtime.uc", "get-status", 0 ],
         get_outbound_metadata: [ "diagnostics/runtime.uc", "get-outbound-metadata", 1 ],
         get_subscription_metadata: [ "diagnostics/runtime.uc", "get-subscription-metadata", 1 ],
         get_sing_box_status: [ "diagnostics/runtime.uc", "get-sing-box-status", 0 ],
+        get_xray_status: [ "diagnostics/runtime.uc", "get-xray-status", 0 ],
         get_zapret_status: [ "diagnostics/runtime.uc", "get-zapret-status", 0 ],
         get_zapret2_status: [ "diagnostics/runtime.uc", "get-zapret2-status", 0 ],
         get_byedpi_status: [ "diagnostics/runtime.uc", "get-byedpi-status", 0 ],

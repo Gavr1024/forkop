@@ -26,6 +26,29 @@ const SING_BOX_MASKED_KEYS = new Set([
   'domain_regex',
   'ip_cidr',
   'source_ip_cidr',
+  'excluded_source_ips',
+  'routing_excluded_ips',
+]);
+
+const XRAY_MASKED_KEYS = new Set([
+  ...SING_BOX_MASKED_KEYS,
+  'id',
+  'address',
+  'port',
+  'publicKey',
+  'privateKey',
+  'shortId',
+  'spiderX',
+  'serverName',
+  'flow',
+  'encryption',
+  'auth',
+  'email',
+  'echConfigList',
+  'seed',
+  'psk',
+  'key',
+  'keys',
 ]);
 
 const FORKOP_MASK_AFTER_TOKEN = [
@@ -57,6 +80,8 @@ const FORKOP_MASK_AFTER_TOKEN_SPACE = [
   'list ip_cidr',
   'list source_ip_cidr',
   'list fully_routed_ips',
+  'list excluded_source_ips',
+  'list routing_excluded_ips',
   'option dns_server',
   'option bootstrap_dns_server',
   'list dns_server',
@@ -205,6 +230,39 @@ export function formatMaskedSingBoxConfig(value: unknown) {
   }
 
   return JSON.stringify(maskSingBoxConfigValue(value), null, 2);
+}
+
+export function maskXrayConfigValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => maskXrayConfigValue(item));
+  }
+
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        XRAY_MASKED_KEYS.has(key) ? MASKED_VALUE : maskXrayConfigValue(item),
+      ]),
+    );
+  }
+
+  return value;
+}
+
+export function stringifyXrayConfig(value: unknown) {
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+}
+
+export function formatMaskedXrayConfig(value: unknown) {
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(maskXrayConfigValue(JSON.parse(value)), null, 2);
+    } catch (_error) {
+      return value;
+    }
+  }
+
+  return JSON.stringify(maskXrayConfigValue(value), null, 2);
 }
 
 export function maskGlobalCheckText(text: string = '') {

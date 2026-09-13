@@ -1284,10 +1284,23 @@ function migrate_http_connection_urls(ctx) {
     }
 }
 
+function migrate_router_traffic_section(ctx) {
+    let settings = ctx.model.settings;
+    if (!bool_option(settings, "route_router_traffic", false)) {
+        delete_option(ctx, settings, "route_router_traffic_section");
+        return;
+    }
+    if (option(settings, "route_router_traffic_section", "") == "") {
+        set_option(ctx, settings, "route_router_traffic", "0");
+        delete_option(ctx, settings, "route_router_traffic_section");
+    }
+}
+
 const MIGRATIONS = [
     { id: "interface_sections", run: migrate_interface_sections },
     { id: "enable_component_checks", run: migrate_enable_component_checks },
-    { id: "http_connection_urls", run: migrate_http_connection_urls }
+    { id: "http_connection_urls", run: migrate_http_connection_urls },
+    { id: "router_traffic_section", run: migrate_router_traffic_section }
 ];
 
 function apply_migrations(ctx) {

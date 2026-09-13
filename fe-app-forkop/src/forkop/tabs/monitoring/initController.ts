@@ -22,7 +22,7 @@ import {
   type ServiceAvailability,
 } from '../../helpers/serviceAvailability';
 
-type MonitoringTabId = 'active' | 'closed';
+type MonitoringTabId = 'active' | 'closed' | 'cores';
 
 type LocalDeviceChoices = Record<string, string>;
 
@@ -94,6 +94,7 @@ let selectedDeviceFilter = ALL_FILTER_VALUE;
 let searchQuery = '';
 let localDeviceChoices: LocalDeviceChoices = {};
 let routeDisplayNames: Record<string, string> = {};
+let routeSectionCores: Record<string, string> = {};
 let routeSections: Array<{ sectionName: string; displayName: string }> = [];
 let serverDisplayNames: Record<string, string> = {};
 let lastDeviceFilterSignature = '';
@@ -176,6 +177,10 @@ function buildRouteDisplayNames(sections: Forkop.ConfigSection[]) {
     'bypass-out': 'Bypass',
     'direct-out': 'direct',
   };
+  const cores: Record<string, string> = {
+    'bypass-out': 'sing-box',
+    'direct-out': 'sing-box',
+  };
   const serverMap: Record<string, string> = {};
   const routeSectionItems: Array<{ sectionName: string; displayName: string }> =
     [];
@@ -209,10 +214,16 @@ function buildRouteDisplayNames(sections: Forkop.ConfigSection[]) {
 
       routeSectionItems.push({ sectionName, displayName });
       map[getOutboundTagBySection(sectionName)] = displayName;
+      const core =
+        normalizeString(section.proxy_core).toLowerCase() === 'xray'
+          ? 'xray'
+          : 'sing-box';
+      cores[getOutboundTagBySection(sectionName)] = core;
       const urltestIds =
         urltestsBySection.get(sectionName) || getUrlTestIds(section);
       urltestIds.forEach((id) => {
         map[getUrlTestTag(sectionName, id)] = displayName;
+        cores[getUrlTestTag(sectionName, id)] = core;
       });
     });
 
@@ -231,6 +242,7 @@ function buildRouteDisplayNames(sections: Forkop.ConfigSection[]) {
     });
 
   routeDisplayNames = map;
+  routeSectionCores = cores;
   serverDisplayNames = serverMap;
   routeSections = routeSectionItems.sort(
     (a, b) => b.sectionName.length - a.sectionName.length,
@@ -425,6 +437,35 @@ function getRoute(connection: MonitoredConnection): string {
   return route || '-';
 }
 
+function getConnectionRouteTag(connection: MonitoredConnection): string {
+  const chains = Array.isArray(connection.chains) ? connection.chains : [];
+  const routeTag = [...chains].reverse().find(getRouteDisplayNameByTag);
+  return routeTag || getRouteTagFromRule(connection.rule) || '';
+}
+
+function getCoreLabel(core: string): string {
+  return core === 'xray' ? 'Xray' : 'sing-box';
+}
+
+function getCore(connection: MonitoredConnection): string {
+  const tag = getConnectionRouteTag(connection);
+  if (tag && routeSectionCores[tag]) {
+    return routeSectionCores[tag];
+  }
+
+  const section = routeSections.find(({ sectionName }) => {
+    return tag === getOutboundTagBySection(sectionName) || tag.startsWith(`${sectionName}-`);
+  });
+  if (section) {
+    return (
+      routeSectionCores[getOutboundTagBySection(section.sectionName)] ||
+      'sing-box'
+    );
+  }
+
+  return 'sing-box';
+}
+
 function getNetwork(connection: MonitoredConnection): string {
   return normalizeString(connection.metadata?.network).toLowerCase() || '-';
 }
@@ -443,6 +484,10 @@ function sortConnections(
 }
 
 function getConnectionsForActiveTab(): MonitoredConnection[] {
+  if (activeTab === 'cores') {
+    return sortConnections(Array.from(activeConnections.values()), 'active');
+  }
+
   const source =
     activeTab === 'active'
       ? Array.from(activeConnections.values())
@@ -464,6 +509,7 @@ function getSearchValues(connection: MonitoredConnection): string[] {
     target.primary,
     getNetwork(connection),
     getRoute(connection),
+    getCoreLabel(getCore(connection)),
     formatConnectionDuration(connection),
     formatBytes(connection.download),
     formatBytes(connection.upload),
@@ -655,6 +701,9 @@ function renderControls() {
   const closedButton = document.getElementById(
     'monitoring-tab-closed',
   ) as HTMLButtonElement | null;
+  const coresButton = document.getElementById(
+    'monitoring-tab-cores',
+  ) as HTMLButtonElement | null;
   const closeAllButton = document.getElementById(
     'monitoring-close-all',
   ) as HTMLButtonElement | null;
@@ -676,8 +725,16 @@ function renderControls() {
     closedButton.disabled = serviceAvailability === 'stopped';
   }
 
+  if (coresButton) {
+    coresButton.replaceChildren(
+      ...renderTabButtonContent(_('Cores'), activeConnections.size),
+    );
+    coresButton.disabled = serviceAvailability === 'stopped';
+  }
+
   setButtonActive(activeButton, activeTab === 'active');
   setButtonActive(closedButton, activeTab === 'closed');
+  setButtonActive(coresButton, activeTab === 'cores');
 
   if (closeAllButton) {
     closeAllButton.replaceChildren(renderXIcon24());
@@ -819,6 +876,12 @@ function renderConnectionRow(connection: MonitoredConnection) {
       renderTableCell(_('Route'), [
         renderValue(getRoute(connection), 'fkp_monitoring-page__route'),
       ]),
+      renderTableCell(_('Core'), [
+        renderValue(
+          getCoreLabel(getCore(connection)),
+          `fkp_monitoring-page__core fkp_monitoring-page__core--${getCore(connection)}`,
+        ),
+      ]),
       renderTableCell(_('Time'), [
         renderValue(formatConnectionDuration(connection)),
       ]),
@@ -840,7 +903,7 @@ function renderStateRow(text: string, className = '') {
       'td',
       {
         class: 'fkp_monitoring-page__state-cell',
-        colSpan: 8,
+        colSpan: 9,
       },
       [
         E(
@@ -875,6 +938,7 @@ function renderConnectionsTable(
             E('th', {}, _('Host')),
             E('th', {}, _('Type')),
             E('th', {}, _('Route')),
+            E('th', {}, _('Core')),
             E('th', {}, _('Time')),
             E('th', {}, `\u2193 ${_('Downloaded')}`),
             E('th', {}, `\u2191 ${_('Uploaded')}`),
@@ -883,6 +947,99 @@ function renderConnectionsTable(
           ]),
         ]),
         E('tbody', {}, rows),
+      ],
+    ),
+  ]);
+}
+
+interface CoreDomainRow {
+  domain: string;
+  core: string;
+  route: string;
+  count: number;
+}
+
+function getCoreDomainRows(connections: MonitoredConnection[]): CoreDomainRow[] {
+  const grouped = new Map<string, CoreDomainRow>();
+
+  connections.forEach((connection) => {
+    const domain = getTargetCellParts(connection).primary || '-';
+    const core = getCore(connection);
+    const route = getRoute(connection);
+    const key = `${domain}\t${core}\t${route}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    grouped.set(key, { domain, core, route, count: 1 });
+  });
+
+  return Array.from(grouped.values()).sort((a, b) => {
+    const byCount = b.count - a.count;
+    if (byCount) {
+      return byCount;
+    }
+    const byCore = getCoreLabel(a.core).localeCompare(getCoreLabel(b.core));
+    return byCore || a.domain.localeCompare(b.domain);
+  });
+}
+
+function renderCoresTable(
+  rows: CoreDomainRow[],
+  state?: { text: string; className?: string },
+) {
+  const body = state
+    ? [
+        E('tr', { class: 'fkp_monitoring-page__state-row' }, [
+          E(
+            'td',
+            {
+              class: 'fkp_monitoring-page__state-cell',
+              colSpan: 4,
+            },
+            [
+              E(
+                'div',
+                {
+                  class: ['fkp_monitoring-page__state', state.className]
+                    .filter(Boolean)
+                    .join(' '),
+                },
+                state.text,
+              ),
+            ],
+          ),
+        ]),
+      ]
+    : rows.map((row) =>
+        E('tr', {}, [
+          renderTableCell(_('Domain'), [renderValue(row.domain)]),
+          renderTableCell(_('Core'), [
+            renderValue(
+              getCoreLabel(row.core),
+              `fkp_monitoring-page__core fkp_monitoring-page__core--${row.core}`,
+            ),
+          ]),
+          renderTableCell(_('Route'), [renderValue(row.route)]),
+          renderTableCell(_('Connections'), [renderValue(String(row.count))]),
+        ]),
+      );
+
+  return E('div', { class: 'fkp_monitoring-page__table-wrap' }, [
+    E(
+      'table',
+      { class: 'table cbi-section-table fkp_monitoring-page__table' },
+      [
+        E('thead', {}, [
+          E('tr', {}, [
+            E('th', {}, _('Domain')),
+            E('th', {}, _('Core')),
+            E('th', {}, _('Route')),
+            E('th', {}, _('Connections')),
+          ]),
+        ]),
+        E('tbody', {}, body),
       ],
     ),
   ]);
@@ -954,13 +1111,25 @@ function renderConnections(options: { force?: boolean } = {}) {
 
   if (visibleConnections.length === 0) {
     container.replaceChildren(
-      renderConnectionsTable([], {
-        text:
-          activeTab === 'active'
-            ? _('No active connections')
-            : _('No closed connections'),
-      }),
+      activeTab === 'cores'
+        ? renderCoresTable([], {
+            text: _('No active connections'),
+          })
+        : renderConnectionsTable([], {
+            text:
+              activeTab === 'active'
+                ? _('No active connections')
+                : _('No closed connections'),
+          }),
     );
+    return;
+  }
+
+  if (activeTab === 'cores') {
+    container.replaceChildren(
+      renderCoresTable(getCoreDomainRows(visibleConnections)),
+    );
+    container.scrollLeft = previousScrollLeft;
     return;
   }
 
@@ -1268,6 +1437,7 @@ async function closeAllConnections() {
 function bindControls() {
   const activeButton = document.getElementById('monitoring-tab-active');
   const closedButton = document.getElementById('monitoring-tab-closed');
+  const coresButton = document.getElementById('monitoring-tab-cores');
   const select = document.getElementById(
     'monitoring-device-filter',
   ) as HTMLSelectElement | null;
@@ -1286,6 +1456,10 @@ function bindControls() {
 
   if (closedButton) {
     closedButton.onclick = () => setTab('closed');
+  }
+
+  if (coresButton) {
+    coresButton.onclick = () => setTab('cores');
   }
 
   if (closeAllButton) {

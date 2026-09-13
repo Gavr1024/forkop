@@ -1097,4 +1097,23 @@ describe('getDashboardSections', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(mocks.getClashApiProxies).toHaveBeenCalledTimes(1);
   });
+
+  it('marks Xray sections and their outbounds with proxyCore=xray', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      proxySection({ proxy_core: 'xray' }),
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: { proxies: clashProxies },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.proxyCore).toBe('xray');
+    expect(
+      section.outbounds.every((outbound) => outbound.proxyCore === 'xray'),
+    ).toBe(true);
+  });
 });

@@ -15,6 +15,12 @@ const COMPONENT_LOCK_DIR = getenv("UPDATES_LOCK_DIR") || RUNTIME_STATE_DIR + "/c
 const TMP_STALE_TTL_MINUTES = getenv("UPDATES_TMP_STALE_TTL_MINUTES") || "30";
 const TMP_FILE_STALE_TTL_MINUTES = getenv("UPDATES_TMP_FILE_STALE_TTL_MINUTES") || "10";
 const SB_MANAGED_SERVICE_MARKER = getenv("SB_MANAGED_SERVICE_MARKER") || constants.SB_MANAGED_SERVICE_MARKER || "Forkop managed sing-box service for binary variants";
+const XRAY_MANAGED_SERVICE_MARKER = getenv("XRAY_MANAGED_SERVICE_MARKER") || constants.XRAY_MANAGED_SERVICE_MARKER || "Forkop managed xray service";
+const XRAY_BIN = getenv("XRAY_BIN") || constants.XRAY_BIN || "/usr/bin/xray";
+const XRAY_CONFIG = getenv("XRAY_CONFIG") || constants.XRAY_CONFIG || "/etc/xray/config.json";
+const XRAY_SERVICE_INIT = getenv("XRAY_SERVICE_INIT") || constants.XRAY_SERVICE_INIT || "/etc/init.d/xray";
+const XRAY_VERSION_STATE_FILE = getenv("XRAY_VERSION_STATE_FILE") || constants.XRAY_VERSION_STATE_FILE || "/etc/forkop/xray-version";
+const XRAY_RELEASE_REPO = getenv("XRAY_RELEASE_REPO") || constants.XRAY_RELEASE_REPO || "XTLS/Xray-core";
 
 let tmp_dir = "";
 let lock_held = false;
@@ -498,7 +504,7 @@ function http_get_once(url, output_path, proxy_address, timeout) {
     timeout = as_string(timeout || "30");
 
     if (command_exists("curl")) {
-        let args = [ "curl", "--connect-timeout", "5", "-m", timeout, "-fsSL" ];
+        let args = [ "curl", "--connect-timeout", "5", "-m", timeout, "-fsSL", "-A", "forkop", "-H", "Accept: application/vnd.github+json" ];
         if (proxy_address != "") {
             push(args, "-x");
             push(args, "http://" + proxy_address);
@@ -510,7 +516,7 @@ function http_get_once(url, output_path, proxy_address, timeout) {
     }
 
     if (command_exists("wget")) {
-        let command = command_from_args([ "wget", "-T", timeout, "-q", "-O", output_path, url ]);
+        let command = command_from_args([ "wget", "-T", timeout, "-q", "-U", "forkop", "-O", output_path, url ]);
         if (proxy_address != "")
             command = command_env({ http_proxy: "http://" + proxy_address, https_proxy: "http://" + proxy_address }) + " " + command;
         return command_success(command);
@@ -631,6 +637,13 @@ function clear_version_caches() {
     remove_file("/tmp/forkop.latest-version.cache");
     remove_file(SYSTEM_INFO_CACHE_FILE);
     remove_file("/tmp/forkop/system-info.json");
+}
+
+function reset_sing_box_dns_cache() {
+    remove_file("/tmp/sing-box/cache.db");
+    remove_file("/tmp/sing-box/cache.db-shm");
+    remove_file("/tmp/sing-box/cache.db-wal");
+    remove_file("/tmp/sing-box/forkop-core-version");
 }
 
 function managed_sing_box_service_installed() {
@@ -1178,20 +1191,186 @@ function set_sing_box_extended_release_from_json(release_json, compressed) {
     };
 }
 
-function resolve_sing_box_extended_release(compressed) {
+function normalize_sing_box_extended_tag(value) {
+    value = trim(as_string(value));
+    if (value == "")
+        return "";
+    if (substr(value, 0, 1) == "v" || substr(value, 0, 1) == "V")
+        return substr(value, 1);
+    return value;
+}
+
+function resolve_sing_box_extended_release_from_releases(releases_json, tag, compressed) {
+    tag = trim(as_string(tag));
+    if (releases_json == "" || tag == "")
+        return null;
+    let release_json = helper_output_input(releases_json, "release-by-tag", [ tag ]);
+    if (release_json == "" && tag != "v" + normalize_sing_box_extended_tag(tag))
+        release_json = helper_output_input(releases_json, "release-by-tag", [ "v" + normalize_sing_box_extended_tag(tag) ]);
+    if (release_json == "" && tag != normalize_sing_box_extended_tag(tag))
+        release_json = helper_output_input(releases_json, "release-by-tag", [ normalize_sing_box_extended_tag(tag) ]);
+    return set_sing_box_extended_release_from_json(release_json, compressed);
+}
+
+function fetch_github_release_json_by_tag(owner, repo, tag) {
+    tag = trim(as_string(tag));
+    if (tag == "")
+        return "";
+
+    let names = [ tag ];
+    let normalized = normalize_sing_box_extended_tag(tag);
+    if (normalized != "" && normalized != tag)
+        push(names, normalized);
+    if (normalized != "" && tag != "v" + normalized)
+        push(names, "v" + normalized);
+
+    for (let name in names) {
+        let response = http_get("https://api.github.com/repos/" + as_string(owner) + "/" + as_string(repo) + "/releases/tags/" + name);
+        if (response != "" && helper_success_input(response, "github-response-ok", []))
+            return response;
+    }
+    return "";
+}
+
+function resolve_sing_box_extended_release(compressed, requested_tag) {
+    requested_tag = trim(as_string(requested_tag));
+    if (requested_tag != "") {
+        let tagged_json = fetch_github_release_json_by_tag("shtorm-7", "sing-box-extended", requested_tag);
+        return set_sing_box_extended_release_from_json(tagged_json, compressed);
+    }
+
     let release_json = fetch_github_release_json("shtorm-7", "sing-box-extended");
     let resolved = set_sing_box_extended_release_from_json(release_json, compressed);
     if (resolved != null)
         return resolved;
 
-    let releases_json = fetch_github_releases_json("shtorm-7", "sing-box-extended", "30");
+    let releases_json = fetch_github_releases_json("shtorm-7", "sing-box-extended", "10");
     if (releases_json == "")
         return null;
     let tag = trim(helper_output_input(releases_json, "sing-box-extended-release-tag", []));
     if (tag == "")
         return null;
-    release_json = helper_output_input(releases_json, "release-by-tag", [ tag ]);
-    return set_sing_box_extended_release_from_json(release_json, compressed);
+    return resolve_sing_box_extended_release_from_releases(releases_json, tag, compressed);
+}
+
+function github_json(url) {
+    let raw = http_get(url);
+    if (trim(as_string(raw)) == "")
+        return null;
+    try {
+        return json(raw);
+    }
+    catch (e) {
+        return null;
+    }
+}
+
+function add_sing_box_extended_tag(result, seen, value) {
+    let tag = trim(as_string(value));
+    if (tag == "")
+        return;
+    if (substr(tag, 0, 1) == "v" || substr(tag, 0, 1) == "V")
+        tag = substr(tag, 1);
+    let lowered = lc(tag);
+    if (seen[tag] || index(lowered, "alpha") >= 0 || index(lowered, "beta") >= 0 || index(lowered, "rc") >= 0)
+        return;
+    if (index(lowered, "extended") < 0)
+        return;
+    seen[tag] = true;
+    push(result, tag);
+}
+
+function release_has_openwrt_package(release) {
+    if (type(release) != "object")
+        return false;
+    for (let asset in array_or_empty(release.assets)) {
+        if (type(asset) != "object")
+            continue;
+        let name = as_string(asset.name || "");
+        if (index(name, "sing-box-extended_") < 0 || index(name, "_openwrt_") < 0)
+            continue;
+        if (str_endswith(name, ".apk") || str_endswith(name, ".ipk"))
+            return true;
+    }
+    return false;
+}
+
+function tag_has_openwrt_package_build(tag) {
+    tag = as_string(tag);
+    let m = match(tag, /extended-([0-9]+)\.([0-9]+)/);
+    if (m == null)
+        return false;
+    let major = int(m[1]);
+    let minor = int(m[2]);
+    return major > 2 || (major == 2 && minor >= 4);
+}
+
+function extract_release_tags_from_text(text, result, seen) {
+    let parts = split(as_string(text), "releases/tag/");
+    let i = 1;
+    while (i < length(parts)) {
+        let chunk = as_string(parts[i]);
+        let tag = "";
+        let j = 0;
+        while (j < length(chunk)) {
+            let ch = substr(chunk, j, 1);
+            if (ch == "\"" || ch == "'" || ch == "<" || ch == ">" || ch == " " || ch == "\n" || ch == "\r" || ch == "&" || ch == "?")
+                break;
+            tag += ch;
+            j++;
+        }
+        add_sing_box_extended_tag(result, seen, tag);
+        i++;
+    }
+}
+
+function list_sing_box_extended_tags() {
+    let result = [];
+    let seen = {};
+
+    let releases = github_json("https://api.github.com/repos/shtorm-7/sing-box-extended/releases?per_page=30");
+    if (type(releases) == "array") {
+        for (let release in releases) {
+            if (type(release) != "object" || release.draft === true || release.prerelease === true)
+                continue;
+            if (!release_has_openwrt_package(release))
+                continue;
+            add_sing_box_extended_tag(result, seen, release.tag_name);
+        }
+    }
+
+    if (length(result) == 0) {
+        let tags = github_json("https://api.github.com/repos/shtorm-7/sing-box-extended/tags?per_page=100");
+        if (type(tags) == "array")
+            for (let item in tags)
+                if (type(item) == "object")
+                    add_sing_box_extended_tag(result, seen, item.name);
+        if (length(result) == 0) {
+            extract_release_tags_from_text(http_get("https://github.com/shtorm-7/sing-box-extended/releases.atom"), result, seen);
+            extract_release_tags_from_text(http_get("https://github.com/shtorm-7/sing-box-extended/releases"), result, seen);
+        }
+        let filtered = [];
+        let filtered_seen = {};
+        for (let tag in result) {
+            if (!tag_has_openwrt_package_build(tag))
+                continue;
+            add_sing_box_extended_tag(filtered, filtered_seen, tag);
+        }
+        return filtered;
+    }
+
+    return result;
+}
+
+function parse_sing_box_action(action) {
+    action = as_string(action);
+    let sep = index(action, "@");
+    if (sep < 0)
+        return { action, tag: "" };
+    return {
+        action: substr(action, 0, sep),
+        tag: substr(action, sep + 1)
+    };
 }
 
 function sing_box_runtime_output(mode, args) {
@@ -1362,13 +1541,18 @@ function fail_package_sing_box_install(action, tiny, reason, current_version, la
     action_fail("sing_box", action, prefix + " " + reason + " and previous sing-box variant could not be restored", current_version, latest_version);
 }
 
-function install_sing_box_extended_package(action) {
+function install_sing_box_extended_package(action, requested_tag) {
     init_tmp_dir() || action_fail("sing_box", action, "Failed to create temporary directory");
     let current_version = sing_box_runtime_output("version", []);
     let current_variant = sing_box_runtime_output("variant", []);
     let previous_marker = sing_box_runtime_output("read-variant-marker", []);
     let previous_version_state = sing_box_runtime_output("read-version-state", []);
-    let release = resolve_sing_box_extended_release(false);
+    let release = resolve_sing_box_extended_release(false, requested_tag);
+    if (release == null && trim(as_string(requested_tag)) != "") {
+        updates_log("No OpenWrt package asset for sing-box-extended " + as_string(requested_tag) + "; installing compressed build of the same tag");
+        install_sing_box_extended(action, true, requested_tag);
+        return;
+    }
     if (release == null)
         action_fail("sing_box", action, "Failed to resolve sing-box-extended package release", current_version);
     let latest_version = normalize_sing_box_version(release.tag);
@@ -1383,31 +1567,17 @@ function install_sing_box_extended_package(action) {
     if (!download_with_retry(release.asset_url, package_file, release.asset_name))
         action_fail("sing_box", action, "Failed to download sing-box-extended package", current_version, latest_version);
 
-    if (!run_logged("Updating package lists before sing-box-extended package installation", pkg_list_update_command()))
-        action_fail("sing_box", action, "Failed to update package lists", current_version, latest_version);
-
     stop_forkop_before_sing_box_change();
     prepare_sing_box_package_service_install();
 
     let backup_binary = "";
     let backup_cronet = "";
-    let cronet_touched = false;
-    if (current_variant == "extended" || current_variant == "extended-compressed") {
-        if (file_exists("/usr/bin/sing-box")) {
-            backup_binary = "/usr/bin/sing-box.forkop-backup." + owner_pid();
-            if (!move_file_to_backup("/usr/bin/sing-box", backup_binary))
-                action_fail("sing_box", action, "Failed to backup current sing-box binary", current_version, latest_version);
-        }
-        if (file_exists("/usr/lib/libcronet.so")) {
-            cronet_touched = true;
-            backup_cronet = "/usr/lib/libcronet.so.forkop-backup." + owner_pid();
-            if (!move_file_to_backup("/usr/lib/libcronet.so", backup_cronet)) {
-                restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
-                action_fail("sing_box", action, "Failed to backup current libcronet.so", current_version, latest_version);
-            }
-        }
-    }
+    let cronet_touched = file_exists("/usr/lib/libcronet.so");
 
+    if (!run_logged_pkg_remove_sing_box_conflict("sing-box-extended", "Removing installed sing-box-extended before package replacement")) {
+        restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
+        action_fail("sing_box", action, "Failed to remove installed sing-box-extended before package replacement", current_version, latest_version);
+    }
     if (!run_logged_pkg_remove_sing_box_conflict("sing-box-tiny", "Removing sing-box-tiny before sing-box-extended package installation")) {
         restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
         action_fail("sing_box", action, "Failed to remove sing-box-tiny before sing-box-extended package installation", current_version, latest_version);
@@ -1415,22 +1585,6 @@ function install_sing_box_extended_package(action) {
     if (!run_logged_pkg_remove_sing_box_conflict("sing-box", "Removing sing-box before sing-box-extended package installation")) {
         restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
         action_fail("sing_box", action, "Failed to remove sing-box before sing-box-extended package installation", current_version, latest_version);
-    }
-
-    if (backup_binary == "" && file_exists("/usr/bin/sing-box")) {
-        backup_binary = "/usr/bin/sing-box.forkop-backup." + owner_pid();
-        if (!move_file_to_backup("/usr/bin/sing-box", backup_binary)) {
-            restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
-            action_fail("sing_box", action, "Failed to backup existing sing-box binary", current_version, latest_version);
-        }
-    }
-    if (!cronet_touched && file_exists("/usr/lib/libcronet.so")) {
-        cronet_touched = true;
-        backup_cronet = "/usr/lib/libcronet.so.forkop-backup." + owner_pid();
-        if (!move_file_to_backup("/usr/lib/libcronet.so", backup_cronet)) {
-            restore_sing_box_after_failed_extended_package_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, package_file, cronet_touched);
-            action_fail("sing_box", action, "Failed to backup current libcronet.so", current_version, latest_version);
-        }
     }
 
     if (!run_logged("Installing sing-box-extended package " + release.asset_name, pkg_install_files_command([ package_file ]))) {
@@ -1447,6 +1601,7 @@ function install_sing_box_extended_package(action) {
     }
 
     write_sing_box_variant_state("extended", new_version);
+    reset_sing_box_dns_cache();
     restart_forkop_after_successful_change();
     if (!wait_forkop_running_after_sing_box_change()) {
         updates_log("sing-box-extended package did not start cleanly; restoring previous sing-box variant", "error");
@@ -1467,9 +1622,9 @@ function install_sing_box_extended_package(action) {
     action_success("sing_box", action, "sing-box-extended has been installed", new_version, latest_version, new_version == current_version ? 0 : 1, "latest", release.release_url);
 }
 
-function install_sing_box_extended(action, compressed) {
+function install_sing_box_extended(action, compressed, requested_tag) {
     if (!compressed) {
-        install_sing_box_extended_package(action);
+        install_sing_box_extended_package(action, requested_tag);
         return;
     }
 
@@ -1479,7 +1634,7 @@ function install_sing_box_extended(action, compressed) {
     let current_variant = sing_box_runtime_output("variant", []);
     let previous_marker = sing_box_runtime_output("read-variant-marker", []);
     let previous_version_state = sing_box_runtime_output("read-version-state", []);
-    let release = resolve_sing_box_extended_release(true);
+    let release = resolve_sing_box_extended_release(true, requested_tag);
     if (release == null)
         action_fail("sing_box", action, "Failed to resolve " + label + " release", current_version);
     let latest_version = normalize_sing_box_version(release.tag);
@@ -1542,29 +1697,7 @@ function install_sing_box_extended(action, compressed) {
 
     let backup_binary = "";
     let backup_cronet = "";
-    let cronet_touched = false;
-    if (file_exists("/usr/bin/sing-box")) {
-        backup_binary = "/usr/bin/sing-box.forkop-backup." + owner_pid();
-        if (!move_file_to_backup("/usr/bin/sing-box", backup_binary)) {
-            remove_file(backup_binary);
-            remove_file(tmp_binary);
-            remove_file(tmp_cronet);
-            remove_file(archive_file);
-            action_fail("sing_box", action, "Failed to backup current sing-box binary", current_version, latest_version);
-        }
-    }
-    if (cronet_path != "") {
-        cronet_touched = true;
-        if (file_exists("/usr/lib/libcronet.so")) {
-            backup_cronet = "/usr/lib/libcronet.so.forkop-backup." + owner_pid();
-            if (!move_file_to_backup("/usr/lib/libcronet.so", backup_cronet)) {
-                restore_sing_box_after_failed_extended_install(current_variant, backup_binary, backup_cronet, previous_marker, previous_version_state, archive_file, cronet_touched);
-                remove_file(tmp_binary);
-                remove_file(tmp_cronet);
-                action_fail("sing_box", action, "Failed to backup current libcronet.so", current_version, latest_version);
-            }
-        }
-    }
+    let cronet_touched = cronet_path != "" && file_exists("/usr/lib/libcronet.so");
 
     for (let item in [
         [ "sing-box-extended", "Removing sing-box-extended package before " + label + " installation" ],
@@ -1611,6 +1744,7 @@ function install_sing_box_extended(action, compressed) {
     }
 
     write_sing_box_variant_state("extended-compressed", new_version);
+    reset_sing_box_dns_cache();
     restart_forkop_after_successful_change();
     if (!wait_forkop_running_after_sing_box_change()) {
         updates_log(label + " did not start cleanly; restoring previous sing-box binary", "error");
@@ -1669,23 +1803,7 @@ function install_package_sing_box(action, tiny) {
 
     let backup_binary = "";
     let backup_cronet = "";
-    let cronet_touched = false;
-    let backup_on_tmpfs = previous_variant == "extended-compressed";
-    if (file_exists("/usr/bin/sing-box")) {
-        backup_binary = backup_on_tmpfs ? tmp_dir + "/sing-box.forkop-backup" :
-            "/usr/bin/sing-box.forkop-backup." + owner_pid();
-        if (!move_file_to_backup("/usr/bin/sing-box", backup_binary))
-            action_fail("sing_box", action, "Failed to backup current sing-box binary", current_version, latest_version);
-    }
-    if (file_exists("/usr/lib/libcronet.so")) {
-        cronet_touched = true;
-        backup_cronet = backup_on_tmpfs ? tmp_dir + "/libcronet.so.forkop-backup" :
-            "/usr/lib/libcronet.so.forkop-backup." + owner_pid();
-        if (!move_file_to_backup("/usr/lib/libcronet.so", backup_cronet)) {
-            restore_sing_box_backup(backup_binary);
-            action_fail("sing_box", action, "Failed to backup current libcronet.so", current_version, latest_version);
-        }
-    }
+    let cronet_touched = file_exists("/usr/lib/libcronet.so");
 
     if (!run_logged("Installing " + label + " package", "sh -c " + shell_quote("exit 0")) ||
         !replace_sing_box_package_variant(package_name, conflict, latest_version))
@@ -1808,29 +1926,58 @@ function install_forkop() {
     action_success("forkop", "install", "Forkop has been installed", new_version, latest_version, 1, "latest", release.release_url);
 }
 
+function list_sing_box_versions() {
+    let current_version = normalize_sing_box_version(sing_box_runtime_output("version", []));
+    let versions = list_sing_box_extended_tags();
+    let latest_version = length(versions) > 0 ? versions[0] : current_version;
+    write_json({
+        success: true,
+        kind: "component",
+        component: "sing_box",
+        action: "list_versions",
+        message: "Available sing-box versions",
+        current_version,
+        latest_version,
+        changed: 0,
+        status: "latest",
+        release_url: "",
+        available_versions: versions
+    });
+    cleanup_action();
+    exit(0);
+}
+
 function dispatch_sing_box(action) {
-    if (action == "install_extended") {
-        install_sing_box_extended(action, false);
+    let parsed = parse_sing_box_action(action);
+    let base = parsed.action;
+    let tag = parsed.tag;
+
+    if (base == "list_versions") {
+        list_sing_box_versions();
         return;
     }
-    if (action == "install_extended_compressed") {
-        install_sing_box_extended(action, true);
+    if (base == "install_extended") {
+        install_sing_box_extended(action, false, tag);
         return;
     }
-    if (action == "install_tiny") {
+    if (base == "install_extended_compressed") {
+        install_sing_box_extended(action, true, tag);
+        return;
+    }
+    if (base == "install_tiny") {
         install_package_sing_box(action, true);
         return;
     }
-    if (action == "install_stable") {
+    if (base == "install_stable") {
         install_package_sing_box(action, false);
         return;
     }
 
     let variant = sing_box_runtime_output("variant", []);
     if (variant == "extended-compressed")
-        install_sing_box_extended(action, true);
+        install_sing_box_extended(action, true, tag);
     else if (variant == "extended")
-        install_sing_box_extended(action, false);
+        install_sing_box_extended(action, false, tag);
     else if (variant == "tiny")
         install_package_sing_box(action, true);
     else
@@ -1844,6 +1991,316 @@ function normalize_component_name(component) {
     if (component == "forkop")
         return "forkop";
     return component;
+}
+
+function xray_runtime_output(mode, args) {
+    let command_args = [ LIB_DIR + "/xray/runtime.uc", mode ];
+    for (let arg in (type(args) == "array" ? args : []))
+        push(command_args, arg);
+    return trim(module_output(command_args));
+}
+
+function xray_runtime_success(mode, args) {
+    let command_args = [ LIB_DIR + "/xray/runtime.uc", mode ];
+    for (let arg in (type(args) == "array" ? args : []))
+        push(command_args, arg);
+    return module_success(command_args);
+}
+
+function parse_xray_version_text(text) {
+    let newline = index(as_string(text), "\n");
+    let line = trim(newline >= 0 ? substr(text, 0, newline) : text);
+    let fields = split(line, /[ \t]+/);
+    if (length(fields) >= 2 && lc(fields[0]) == "xray")
+        return as_string(fields[1]);
+    return length(fields) > 0 ? as_string(fields[length(fields) - 1]) : "";
+}
+
+function normalize_xray_version(value) {
+    value = trim(as_string(value));
+    if (lc(substr(value, 0, 1)) == "v")
+        value = substr(value, 1);
+    return trim(helper_output("updates-normalize-sing-box-version", [ value ]));
+}
+
+function managed_xray_service_installed() {
+    return file_exists(XRAY_SERVICE_INIT) && index(read_file(XRAY_SERVICE_INIT), XRAY_MANAGED_SERVICE_MARKER) >= 0;
+}
+
+function managed_xray_service_text() {
+    return "#!/bin/sh /etc/rc.common\n" +
+        "# " + XRAY_MANAGED_SERVICE_MARKER + "\n\n" +
+        "USE_PROCD=1\n" +
+        "START=99\n" +
+        "PROG=\"" + XRAY_BIN + "\"\n" +
+        "CONF=\"" + XRAY_CONFIG + "\"\n\n" +
+        "start_service() {\n" +
+        "    [ -x \"$PROG\" ] || return 1\n" +
+        "    [ -f \"$CONF\" ] || return 1\n" +
+        "    procd_open_instance\n" +
+        "    procd_set_param command \"$PROG\" run -c \"$CONF\"\n" +
+        "    procd_set_param file \"$CONF\"\n" +
+        "    procd_set_param stderr 1\n" +
+        "    procd_set_param limits core=\"unlimited\"\n" +
+        "    procd_set_param limits nofile=\"1000000 1000000\"\n" +
+        "    procd_set_param respawn\n" +
+        "    procd_close_instance\n" +
+        "}\n\n" +
+        "reload_service() {\n" +
+        "    stop\n" +
+        "    start\n" +
+        "}\n";
+}
+
+function install_managed_xray_service_script() {
+    let tmp = XRAY_SERVICE_INIT + ".forkop." + owner_pid();
+    if (!write_file(tmp, managed_xray_service_text()))
+        return false;
+    if (!command_success_from_args([ "chmod", "0755", tmp ])) {
+        remove_file(tmp);
+        return false;
+    }
+    return fs.rename(tmp, XRAY_SERVICE_INIT);
+}
+
+function remove_managed_xray_service_script() {
+    if (file_exists(XRAY_SERVICE_INIT)) {
+        command_success_from_args([ XRAY_SERVICE_INIT, "stop" ]);
+        command_success_from_args([ XRAY_SERVICE_INIT, "disable" ]);
+        if (managed_xray_service_installed())
+            remove_file(XRAY_SERVICE_INIT);
+    }
+    return true;
+}
+
+function select_zip_member_path(archive_file, member_name) {
+    return trim(helper_output_input(command_output_from_args([ "unzip", "-l", archive_file ]), "updates-zip-member-path", [ member_name ]));
+}
+
+function resolve_xray_release(requested_tag) {
+    let host_arch = trim(command_output_from_args([ "uname", "-m" ]));
+    let distrib_arch = read_openwrt_release_value("DISTRIB_ARCH");
+    let suffix = trim(helper_output("xray-arch-suffix", [ host_arch, distrib_arch ]));
+    if (suffix == "")
+        return null;
+
+    let parts = split(XRAY_RELEASE_REPO, "/");
+    if (length(parts) != 2)
+        return null;
+
+    requested_tag = trim(as_string(requested_tag || ""));
+    let release_json = "";
+    if (requested_tag != "") {
+        release_json = fetch_github_release_json_by_tag(parts[0], parts[1], requested_tag);
+        if (release_json == "") {
+            let normalized = normalize_xray_version(requested_tag);
+            if (normalized != "" && normalized != requested_tag)
+                release_json = fetch_github_release_json_by_tag(parts[0], parts[1], normalized);
+            if (release_json == "" && normalized != "" && lc(substr(requested_tag, 0, 1)) != "v")
+                release_json = fetch_github_release_json_by_tag(parts[0], parts[1], "v" + normalized);
+        }
+    } else {
+        release_json = fetch_github_release_json(parts[0], parts[1]);
+    }
+    if (release_json == "")
+        return null;
+
+    let tag = trim(helper_output_input(release_json, "object-get-default", [ "tag_name", "" ]));
+    let url = trim(helper_output_input(release_json, "xray-asset-url", [ suffix ]));
+    let html_url = trim(helper_output_input(release_json, "object-get-default", [ "html_url", "" ]));
+    if (tag == "" || url == "")
+        return null;
+
+    return {
+        tag,
+        version: normalize_xray_version(tag),
+        asset_url: url,
+        asset_name: "Xray-" + suffix + ".zip",
+        release_url: html_url
+    };
+}
+
+function install_xray(action, requested_tag) {
+    init_tmp_dir() || action_fail("xray", action, "Failed to create temporary directory");
+    let current_version = normalize_xray_version(xray_runtime_output("version", []));
+    let release = null;
+    retry_resolve("Resolving Xray-core package", function() {
+        release = resolve_xray_release(requested_tag);
+        return release != null;
+    });
+    if (release == null)
+        action_fail("xray", action, "Failed to resolve Xray-core for this router architecture", current_version);
+    let latest_version = as_string(release.version || "");
+
+    if (action == "check_update") {
+        if (!xray_runtime_success("installed", []))
+            action_fail("xray", action, "Xray is not installed", current_version, latest_version, "", release.release_url || "");
+        check_success("xray", current_version, latest_version, release.release_url || "");
+    }
+
+    if (!ensure_package_tool("unzip", "unzip", "xray", action))
+        action_fail("xray", action, "Failed to install unzip", current_version, latest_version, "", release.release_url || "");
+
+    let archive_file = tmp_dir + "/" + release.asset_name;
+    if (!download_with_retry(release.asset_url, archive_file, release.asset_name) || !file_nonempty(archive_file))
+        action_fail("xray", action, "Failed to download Xray-core", current_version, latest_version, "", release.release_url || "");
+
+    let binary_path = select_zip_member_path(archive_file, "Xray");
+    if (binary_path == "")
+        binary_path = select_zip_member_path(archive_file, "xray");
+    if (binary_path == "") {
+        remove_file(archive_file);
+        action_fail("xray", action, "Xray binary was not found in the downloaded archive", current_version, latest_version, "", release.release_url || "");
+    }
+
+    let extract_error = tmp_dir + "/xray-extract.err";
+    let tmp_binary = tmp_dir + "/xray.bin." + owner_pid();
+    if (!command_success(command_from_args([ "unzip", "-p", archive_file, binary_path ]) + " >" + shell_quote(tmp_binary) + " 2>" + shell_quote(extract_error)) ||
+        !file_nonempty(tmp_binary) ||
+        !command_success_from_args([ "chmod", "0755", tmp_binary ])) {
+        for (let line in split(read_file(extract_error), "\n"))
+            if (trim(as_string(line)) != "")
+                updates_log(line);
+        remove_file(tmp_binary);
+        remove_file(archive_file);
+        action_fail("xray", action, "Failed to extract Xray-core", current_version, latest_version, "", release.release_url || "");
+    }
+
+    let parsed_version = normalize_xray_version(parse_xray_version_text(command_output_from_args([ tmp_binary, "version" ])));
+    if (parsed_version == "")
+        parsed_version = latest_version;
+
+    if (!ensure_dir("/etc/xray") || !ensure_dir("/usr/share/xray") || !ensure_dir("/etc/forkop")) {
+        remove_file(tmp_binary);
+        remove_file(archive_file);
+        action_fail("xray", action, "Failed to create Xray directories", current_version, latest_version, "", release.release_url || "");
+    }
+
+    for (let geo_name in [ "geoip.dat", "geosite.dat" ]) {
+        let geo_path = select_zip_member_path(archive_file, geo_name);
+        if (geo_path == "")
+            continue;
+        let tmp_geo = tmp_dir + "/" + geo_name;
+        if (command_success(command_from_args([ "unzip", "-p", archive_file, geo_path ]) + " >" + shell_quote(tmp_geo) + " 2>/dev/null") && file_nonempty(tmp_geo)) {
+            install_staged_file(tmp_geo, "/usr/share/xray/" + geo_name, "0644");
+            command_success_from_args([ "cp", "-f", "/usr/share/xray/" + geo_name, "/etc/xray/" + geo_name ]);
+        }
+        remove_file(tmp_geo);
+    }
+    remove_file(archive_file);
+
+    if (file_exists(XRAY_SERVICE_INIT)) {
+        command_success_from_args([ XRAY_SERVICE_INIT, "stop" ]);
+        command_success_from_args([ XRAY_SERVICE_INIT, "disable" ]);
+    }
+    command_success("killall xray >/dev/null 2>&1");
+
+    if (!install_staged_file(tmp_binary, XRAY_BIN, "0755")) {
+        remove_file(tmp_binary);
+        action_fail("xray", action, "Failed to install Xray binary", current_version, latest_version, "", release.release_url || "");
+    }
+
+    if (!install_managed_xray_service_script())
+        action_fail("xray", action, "Failed to install managed Xray service", current_version, latest_version, "", release.release_url || "");
+
+    command_success_from_args([ XRAY_SERVICE_INIT, "disable" ]);
+    xray_runtime_success("write-version-state", [ parsed_version ]);
+    restart_forkop_after_successful_change();
+    clear_version_caches();
+    let new_version = normalize_xray_version(xray_runtime_output("version", []));
+    if (new_version == "")
+        new_version = parsed_version;
+    updates_log("Installed Xray-core " + (new_version != "" ? new_version : "unknown"));
+    action_success("xray", action, "Xray-core has been installed", new_version, latest_version, 1, "latest", release.release_url || "");
+}
+
+function remove_xray() {
+    let current_version = normalize_xray_version(xray_runtime_output("version", []));
+    if (!file_exists(XRAY_BIN) && !file_exists(XRAY_SERVICE_INIT))
+        action_success("xray", "remove", "Xray is already removed", "", "", 0);
+
+    if (file_exists(XRAY_SERVICE_INIT)) {
+        command_success_from_args([ XRAY_SERVICE_INIT, "stop" ]);
+        command_success_from_args([ XRAY_SERVICE_INIT, "disable" ]);
+    }
+    command_success("killall xray >/dev/null 2>&1");
+    remove_managed_xray_service_script();
+    remove_file(XRAY_BIN);
+    remove_file(XRAY_VERSION_STATE_FILE);
+    clear_version_caches();
+    restart_forkop_after_successful_change();
+    action_success("xray", "remove", "Xray-core has been removed", current_version, "", 1);
+}
+
+function list_xray_release_tags() {
+    let result = [];
+    let seen = {};
+    let parts = split(XRAY_RELEASE_REPO, "/");
+    if (length(parts) != 2)
+        return result;
+
+    let releases = github_json("https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/releases?per_page=30");
+    if (type(releases) != "array")
+        return result;
+
+    for (let release in releases) {
+        if (type(release) != "object" || release.draft === true)
+            continue;
+        let tag = normalize_xray_version(release.tag_name);
+        if (tag == "" || seen[tag])
+            continue;
+        let lowered = lc(tag);
+        if (index(lowered, "alpha") >= 0 || index(lowered, "beta") >= 0 || index(lowered, "rc") >= 0)
+            continue;
+        seen[tag] = true;
+        push(result, tag);
+    }
+    return result;
+}
+
+function list_xray_versions() {
+    let current_version = normalize_xray_version(xray_runtime_output("version", []));
+    let versions = list_xray_release_tags();
+    let latest_version = length(versions) > 0 ? versions[0] : current_version;
+    write_json({
+        success: true,
+        kind: "component",
+        component: "xray",
+        action: "list_versions",
+        message: "Available Xray versions",
+        current_version,
+        latest_version,
+        changed: 0,
+        status: "latest",
+        release_url: "",
+        available_versions: versions
+    });
+    cleanup_action();
+    exit(0);
+}
+
+function parse_xray_action(action) {
+    action = as_string(action);
+    let sep = index(action, "@");
+    if (sep < 0)
+        return { action, tag: "" };
+    return {
+        action: substr(action, 0, sep),
+        tag: substr(action, sep + 1)
+    };
+}
+
+function dispatch_xray(action) {
+    let parsed = parse_xray_action(action);
+    if (parsed.action == "list_versions") {
+        list_xray_versions();
+        return;
+    }
+    if (parsed.action == "remove") {
+        remove_xray();
+        return;
+    }
+    install_xray(action, parsed.tag);
 }
 
 function component_action(component, action) {
@@ -1860,8 +2317,12 @@ function component_action(component, action) {
     else if (component == "forkop" && action == "install")
         install_forkop();
     else if (component == "sing_box" && (action == "check_update" || action == "install" ||
+        action == "list_versions" ||
         action == "install_extended" || action == "install_extended_compressed" ||
-        action == "install_tiny" || action == "install_stable"))
+        action == "install_tiny" || action == "install_stable" ||
+        index(action, "install_extended@") == 0 ||
+        index(action, "install_extended_compressed@") == 0 ||
+        index(action, "install@") == 0))
         dispatch_sing_box(action);
     else if (component == "zapret" && (action == "check_update" || action == "install"))
         install_zapret(action);
@@ -1875,6 +2336,10 @@ function component_action(component, action) {
         install_byedpi(action);
     else if (component == "byedpi" && action == "remove")
         remove_optional_component("byedpi", "byedpi", "ByeDPI", LIB_DIR + "/providers/byedpi/runtime.uc");
+    else if (component == "xray" && (action == "check_update" || action == "install" ||
+        action == "list_versions" || action == "remove" ||
+        index(action, "install@") == 0))
+        dispatch_xray(action);
     else
         action_fail(component != "" ? component : "unknown", action != "" ? action : "unknown", "Unknown component action");
 }

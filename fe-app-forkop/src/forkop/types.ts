@@ -44,6 +44,7 @@ export namespace Forkop {
   // show_config             Display current forkop configuration
   // show_version            Show forkop version
   // show_sing_box_config    Show sing-box configuration
+  // show_xray_config        Show Xray configuration
   // show_sing_box_version   Show sing-box version
   // get_status              Get forkop service status
   // get_sing_box_status     Get sing-box service status
@@ -58,6 +59,7 @@ export namespace Forkop {
     CHECK_ZAPRET_RUNTIME = 'check_zapret_runtime',
     CHECK_ZAPRET2_RUNTIME = 'check_zapret2_runtime',
     CHECK_BYEDPI_RUNTIME = 'check_byedpi_runtime',
+    CHECK_XRAY = 'check_xray',
     CHECK_INBOUNDS_CONFIG = 'check_inbounds_config',
     GET_STATUS = 'get_status',
     GET_OUTBOUND_METADATA = 'get_outbound_metadata',
@@ -68,11 +70,13 @@ export namespace Forkop {
     GET_ZAPRET_STATUS = 'get_zapret_status',
     GET_ZAPRET2_STATUS = 'get_zapret2_status',
     GET_BYEDPI_STATUS = 'get_byedpi_status',
+    GET_XRAY_STATUS = 'get_xray_status',
     CLASH_API = 'clash_api',
     ENABLE = 'enable',
     DISABLE = 'disable',
     GLOBAL_CHECK = 'global_check',
     SHOW_SING_BOX_CONFIG = 'show_sing_box_config',
+    SHOW_XRAY_CONFIG = 'show_xray_config',
     CHECK_LOGS = 'check_logs',
     CHECK_SING_BOX_LOGS = 'check_sing_box_logs',
     GET_SYSTEM_INFO = 'get_system_info',
@@ -114,6 +118,7 @@ export namespace Forkop {
     runtimeAvailable?: boolean;
     urlTestInfo?: UrlTestInfo;
     priorityInfo?: PriorityInfo;
+    proxyCore?: 'sing-box' | 'xray';
   }
 
   export interface UrlTestMember {
@@ -172,6 +177,7 @@ export namespace Forkop {
     latencyTestCodes?: string[];
     latencyTestTimeout?: string;
     proxyConfigType?: ProxyConfigType;
+    proxyCore?: 'sing-box' | 'xray';
     subscriptionSourceCount?: number;
     subscriptionMetadata?: SubscriptionMetadata[];
     outbounds: Outbound[];
@@ -255,6 +261,7 @@ export namespace Forkop {
     nfqws_opt?: string;
     nfqws2_opt?: string;
     byedpi_cmd_opts?: string;
+    proxy_core?: 'sing-box' | 'xray' | string;
     cmd_opts?: string;
     selector_proxy_links?: string[];
     subscription_urls?: string[];
@@ -400,6 +407,16 @@ export namespace Forkop {
     sing_box_ports_listening: 0 | 1;
   }
 
+  export interface XrayCheckResult {
+    xray_installed: 0 | 1;
+    xray_version_ok: 0 | 1;
+    xray_service_exist: 0 | 1;
+    xray_autostart_disabled: 0 | 1;
+    xray_process_running: 0 | 1;
+    xray_ports_listening: 0 | 1;
+    xray_sections_configured: 0 | 1;
+  }
+
   export interface InboundCheckItem {
     section: string;
     label: string;
@@ -455,6 +472,7 @@ export namespace Forkop {
   export interface GetOutboundMetadata {
     names?: Record<string, string>;
     countries?: Record<string, string>;
+    protocols?: Record<string, string>;
   }
 
   export interface GetSingBoxStatus {
@@ -478,6 +496,8 @@ export namespace Forkop {
     zapret2_installed: 0 | 1;
     byedpi_version: string;
     byedpi_installed: 0 | 1;
+    xray_version: string;
+    xray_installed: 0 | 1;
     openwrt_version: string;
     device_model: string;
     generated_at?: number;
@@ -497,6 +517,7 @@ export namespace Forkop {
     zapret_installed: 0 | 1;
     zapret2_installed: 0 | 1;
     byedpi_installed: 0 | 1;
+    xray_installed: 0 | 1;
     server_inbounds_enabled_count: number;
   }
 
@@ -538,6 +559,7 @@ export namespace Forkop {
     service: {
       forkop: GetStatus;
       sing_box: GetSingBoxStatus;
+      xray?: GetSingBoxStatus;
     };
     capabilities: GetUiCapabilities;
     actions: {
@@ -553,7 +575,8 @@ export namespace Forkop {
     | 'sing_box'
     | 'zapret'
     | 'zapret2'
-    | 'byedpi';
+    | 'byedpi'
+    | 'xray';
 
   export type ComponentAction =
     | 'check_update'
@@ -562,7 +585,8 @@ export namespace Forkop {
     | 'install_extended'
     | 'install_extended_compressed'
     | 'install_tiny'
-    | 'install_stable';
+    | 'install_stable'
+    | 'list_versions';
 
   export interface ComponentActionResult {
     success: boolean;
@@ -575,6 +599,7 @@ export namespace Forkop {
     current_version: string;
     latest_version: string;
     release_url?: string;
+    available_versions?: string[];
     changed: boolean;
     status?: 'latest' | 'outdated' | 'dev' | '';
     pid?: string | null;

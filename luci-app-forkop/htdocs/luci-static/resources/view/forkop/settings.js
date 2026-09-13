@@ -4,6 +4,7 @@
 "require baseclass";
 "require tools.widgets as widgets";
 "require view.forkop.main as main";
+"require view.forkop.local_devices as localDevices";
 
 const UCI_PACKAGE = main.FORKOP_UCI_PACKAGE;
 
@@ -299,6 +300,65 @@ function createSettingsContent(section, capabilities) {
   };
 
   o = section.option(
+    form.DynamicList,
+    "routing_excluded_ips",
+    _("Completely excluded devices"),
+    _(
+      "Devices and subnets in this list are fully excluded from Forkop: no tproxy mark, no FakeIP DNS, traffic goes as if Forkop were stopped.",
+    ),
+  );
+  o.placeholder = _("Device or IP");
+  o.rmempty = true;
+  o.validate = function (_section_id, value) {
+    if (!value || value.length === 0) {
+      return true;
+    }
+
+    const resolved = localDevices.resolveLocalDeviceListValue(value);
+    const validation = main.validateSubnet(resolved);
+    return validation.valid ? true : validation.message;
+  };
+  o.write = function (section_id, value) {
+    const resolved = localDevices
+      .normalizeOptionValues(value)
+      .map((item) => localDevices.resolveLocalDeviceListValue(item));
+    if (resolved.length) {
+      uci.set(UCI_PACKAGE, section_id, "routing_excluded_ips", resolved);
+    } else {
+      uci.unset(UCI_PACKAGE, section_id, "routing_excluded_ips");
+    }
+  };
+  o.renderWidget = function (section_id, _option_index, cfgvalue) {
+    return localDevices.createLocalDeviceDynamicListWidget(
+      this,
+      section_id,
+      cfgvalue,
+    );
+  };
+
+  o = section.option(
+    form.Flag,
+    "route_router_traffic",
+    _("Route the router's own traffic"),
+    _(
+      "Send IPv4 TCP from the router itself through the selected section. Ping, DNS and NTP stay direct. Apply and restart Forkop after changing this.",
+    ),
+  );
+  configureDownloadViaProxyFlag(o, "route_router_traffic_section");
+
+  o = section.option(
+    form.ListValue,
+    "route_router_traffic_section",
+    _("Router traffic through"),
+  );
+  o.depends("route_router_traffic", "1");
+  configureDownloadSectionOption(
+    o,
+    "route_router_traffic_section",
+    capabilities,
+  );
+
+  o = section.option(
     form.Flag,
     "enable_output_network_interface",
     _("Enable Output Network Interface"),
@@ -358,6 +418,53 @@ function createSettingsContent(section, capabilities) {
 
     return !isWireless;
   };
+
+  o = section.option(
+    form.Flag,
+    "restart_interfaces_after_start",
+    _("Restart interfaces after start"),
+    _(
+      "Bring selected network interfaces down and up after Forkop starts. Use this if routing appears only after a WAN/LAN bounce.",
+    ),
+  );
+  configureDownloadViaProxyFlag(o, "restart_interfaces");
+
+  o = section.option(
+    widgets.NetworkSelect,
+    "restart_interfaces",
+    _("Interfaces to restart"),
+  );
+  o.depends("restart_interfaces_after_start", "1");
+  o.multiple = true;
+  o.rmempty = false;
+  o.filter = function (_section_id, value) {
+    if (["loopback", "lo"].includes(value)) {
+      return false;
+    }
+    if (value.startsWith("@")) {
+      return false;
+    }
+    return true;
+  };
+
+  o = section.option(
+    form.ListValue,
+    "restart_interfaces_delay",
+    _("Restart delay"),
+    _(
+      "Seconds to wait after a successful start before restarting the selected interfaces.",
+    ),
+  );
+  o.depends("restart_interfaces_after_start", "1");
+  o.default = "5";
+  o.rmempty = false;
+  o.value("0", _("Immediately"));
+  o.value("3", _("3 seconds"));
+  o.value("5", _("5 seconds"));
+  o.value("10", _("10 seconds"));
+  o.value("15", _("15 seconds"));
+  o.value("30", _("30 seconds"));
+  o.value("60", _("60 seconds"));
 
   o = section.option(
     form.Flag,
@@ -557,6 +664,17 @@ function createSettingsContent(section, capabilities) {
 
   o = section.option(
     form.Flag,
+    "persist_lists_locally",
+    _("Save selected lists locally"),
+    _(
+      "Download selected community lists and rule sets to flash and use them as a backup when the online repository is unavailable. If download through a section is enabled, that section is started first.",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Flag,
     "download_lists_via_proxy",
     _("Download lists through a section"),
     _("Download remote lists and rule sets via the selected section"),
@@ -675,6 +793,17 @@ function createSettingsContent(section, capabilities) {
     _("Exclude NTP"),
     _(
       "Exclude NTP protocol traffic from the tunnel to prevent it from being routed through the proxy or VPN",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Flag,
+    "exclude_bittorrent",
+    _("Exclude BitTorrent"),
+    _(
+      "Send BitTorrent and DHT traffic directly, bypassing Forkop. Trackers over HTTP/HTTPS may still follow section rules.",
     ),
   );
   o.default = "0";

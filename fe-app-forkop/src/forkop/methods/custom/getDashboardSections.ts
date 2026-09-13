@@ -92,6 +92,31 @@ type PriorityLevelConfig = {
 type ItemSettingsValue = string | string[] | PriorityLevelConfig[] | undefined;
 type ItemSettings = Record<string, ItemSettingsValue>;
 
+function getSectionProxyCore(
+  section: Forkop.ConfigSection,
+): NonNullable<Forkop.OutboundGroup['proxyCore']> {
+  const value = String(section.proxy_core || '')
+    .trim()
+    .toLowerCase();
+  return value === 'xray' || value === 'xray-core' ? 'xray' : 'sing-box';
+}
+
+function withProxyCore(
+  section: Forkop.ConfigSection,
+  group: Forkop.OutboundGroup,
+): Forkop.OutboundGroup {
+  const proxyCore = getSectionProxyCore(section);
+
+  return {
+    ...group,
+    proxyCore,
+    outbounds: (group.outbounds || []).map((outbound) => ({
+      ...outbound,
+      proxyCore: outbound.proxyCore || proxyCore,
+    })),
+  };
+}
+
 type UrlTestConfig = {
   id: string;
   code: string;
@@ -1136,7 +1161,12 @@ function buildProxyGroupOutbounds(
         code,
         displayName,
         latency: item?.value.history?.[0]?.delay || 0,
-        type: priorityConfig ? 'Priority' : item?.value.type || 'URLTest',
+        type: priorityConfig
+          ? 'Priority'
+          : dashboardClashType(
+              item?.value.type,
+              outboundMetadata?.protocols?.[code],
+            ) || 'URLTest',
         selected: selector?.value?.now === code,
         link,
         canCopyLink,
@@ -1335,6 +1365,34 @@ function getSubscriptionMetadata(
   return undefined;
 }
 
+function dashboardClashType(
+  clashType: string | undefined,
+  protocol?: string,
+) {
+  const type = clashType || '';
+  if (type && type.toLowerCase() !== 'socks') {
+    return type;
+  }
+
+  const mapped: Record<string, string> = {
+    vless: 'VLESS',
+    vmess: 'VMess',
+    trojan: 'Trojan',
+    shadowsocks: 'Shadowsocks',
+    hysteria: 'Hysteria2',
+    hysteria2: 'Hysteria2',
+    hy2: 'Hysteria2',
+    direct: 'Direct',
+    freedom: 'Direct',
+    socks: 'SOCKS',
+  };
+  const key = String(protocol || '').toLowerCase();
+  if (!key) {
+    return type;
+  }
+  return mapped[key] || type || 'Socks';
+}
+
 function getOutboundMetadata(dashboardCache?: DashboardSectionCache) {
   const metadata = dashboardCache?.outboundMetadata;
 
@@ -1345,6 +1403,7 @@ function getOutboundMetadata(dashboardCache?: DashboardSectionCache) {
   return {
     names: objectMap(metadata.names),
     countries: objectMap(metadata.countries),
+    protocols: objectMap(metadata.protocols),
   };
 }
 
@@ -1416,7 +1475,7 @@ export async function getDashboardSections(
               cachedProxyLinks,
             );
 
-          return {
+          return withProxyCore(section, {
             withTagSelect: true,
             code: selector?.code || sectionName,
             sectionName,
@@ -1428,14 +1487,14 @@ export async function getDashboardSections(
             subscriptionSourceCount,
             subscriptionMetadata,
             outbounds,
-          };
+          });
         }
 
         if (sectionAction === 'vpn') {
           const outboundTag = getOutboundTagBySection(sectionName);
           const outbound = proxies.find((proxy) => proxy.code === outboundTag);
 
-          return {
+          return withProxyCore(section, {
             withTagSelect: false,
             code: outbound?.code || sectionName,
             sectionName,
@@ -1453,14 +1512,14 @@ export async function getDashboardSections(
                 runtimeAvailable: Boolean(outbound),
               },
             ],
-          };
+          });
         }
 
         if (sectionAction === 'outbound') {
           const outboundTag = getOutboundTagBySection(sectionName);
           const outbound = proxies.find((proxy) => proxy.code === outboundTag);
 
-          return {
+          return withProxyCore(section, {
             withTagSelect: false,
             code: outbound?.code || sectionName,
             sectionName,
@@ -1479,17 +1538,17 @@ export async function getDashboardSections(
                 canCopyLink: false,
               },
             ],
-          };
+          });
         }
 
-        return {
+        return withProxyCore(section, {
           withTagSelect: false,
           code: sectionName,
           sectionName,
           displayName,
           action: sectionAction,
           outbounds: [],
-        };
+        });
       }),
   );
 

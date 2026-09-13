@@ -604,6 +604,10 @@ secret
 0
 [settings.download_components_via_proxy]
 0
+[settings.persist_lists_locally]
+0
+[settings.route_router_traffic]
+0
 [rule.proxy1.action]
 proxy
 [rule.proxy1.connection_urls]

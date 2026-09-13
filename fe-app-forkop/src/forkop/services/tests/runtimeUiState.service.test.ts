@@ -33,6 +33,11 @@ function createUiState(
         enabled: 0,
         status: running ? 'running but disabled' : 'stopped & disabled',
       },
+      xray: {
+        running: 0,
+        enabled: 0,
+        status: 'not installed',
+      },
     },
     capabilities: {
       sing_box_extended: 1,
@@ -42,6 +47,7 @@ function createUiState(
       zapret_installed: 1,
       zapret2_installed: 1,
       byedpi_installed: 0,
+      xray_installed: 0,
       server_inbounds_enabled_count: 0,
     },
     actions: {

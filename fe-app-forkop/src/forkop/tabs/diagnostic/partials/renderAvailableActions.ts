@@ -27,6 +27,7 @@ interface IRenderAvailableActionsProps {
   globalCheck: ActionProps;
   viewLogs: ActionProps;
   showSingBoxConfig: ActionProps;
+  showXrayConfig: ActionProps;
 }
 
 export function renderAvailableActions({
@@ -38,6 +39,7 @@ export function renderAvailableActions({
   globalCheck,
   viewLogs,
   showSingBoxConfig,
+  showXrayConfig,
 }: IRenderAvailableActionsProps) {
   return E('div', { class: 'fkp_diagnostic-page__right-bar__actions' }, [
     E('b', {}, _('Available actions')),
@@ -116,6 +118,15 @@ export function renderAvailableActions({
         text: _('Show sing-box config'),
         loading: showSingBoxConfig.loading,
         disabled: showSingBoxConfig.disabled,
+      }),
+    ]),
+    ...insertIf(showXrayConfig.visible, [
+      renderButton({
+        onClick: showXrayConfig.onClick,
+        icon: renderCogIcon24,
+        text: _('Show Xray config'),
+        loading: showXrayConfig.loading,
+        disabled: showXrayConfig.disabled,
       }),
     ]),
   ]);

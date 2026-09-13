@@ -158,6 +158,8 @@ export interface StoreType {
     failed: boolean;
     data: {
       singbox: number;
+      xray: number;
+      xrayInstalled: number;
       forkopRunning: number;
       forkopEnabled: number;
       forkopStatus: string;
@@ -185,6 +187,7 @@ export interface StoreType {
     globalCheck: { loading: boolean };
     viewLogs: { loading: boolean };
     showSingBoxConfig: { loading: boolean };
+    showXrayConfig: { loading: boolean };
   };
   diagnosticsSystemInfo: {
     loading: boolean;
@@ -204,6 +207,8 @@ export interface StoreType {
     zapret2_installed: number;
     byedpi_version: string;
     byedpi_installed: number;
+    xray_version: string;
+    xray_installed: number;
     server_inbounds_enabled_count: number;
     openwrt_version: string;
     device_model: string;
@@ -226,6 +231,9 @@ export interface StoreType {
     byedpiCheck: { loading: boolean };
     byedpiInstall: { loading: boolean };
     byedpiRemove: { loading: boolean };
+    xrayCheck: { loading: boolean };
+    xrayInstall: { loading: boolean };
+    xrayRemove: { loading: boolean };
   };
   updatesChecks: Record<
     Forkop.ComponentName,
@@ -262,6 +270,8 @@ const initialStore: StoreType = {
     failed: false,
     data: {
       singbox: 0,
+      xray: 0,
+      xrayInstalled: 0,
       forkopRunning: 0,
       forkopEnabled: 0,
       forkopStatus: '',

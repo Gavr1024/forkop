@@ -479,6 +479,84 @@ function updates_zip_inner_package_path(component, arch, ext) {
         print(fallback, "\n");
 }
 
+function updates_zip_member_path(member_name) {
+    member_name = as_string(member_name);
+    let fallback = "";
+
+    for (let line in split(read_stdin(), "\n")) {
+        let path = fourth_whitespace_field(line);
+        if (path == "")
+            continue;
+        if (path_basename(path) == member_name) {
+            print(path, "\n");
+            return;
+        }
+        if (fallback == "" && lc(path_basename(path)) == lc(member_name))
+            fallback = path;
+    }
+
+    if (fallback != "")
+        print(fallback, "\n");
+}
+
+function xray_arch_suffix(host_arch, distrib_arch) {
+    host_arch = as_string(host_arch);
+    distrib_arch = as_string(distrib_arch);
+
+    if (str_contains(distrib_arch, "mipsel") || str_contains(distrib_arch, "mipsle"))
+        host_arch = "mipsel";
+    else if (str_contains(distrib_arch, "mips64el") || str_contains(distrib_arch, "mips64le"))
+        host_arch = "mips64el";
+
+    if (host_arch == "aarch64")
+        print("linux-arm64-v8a\n");
+    else if (str_startswith(host_arch, "armv7"))
+        print("linux-arm32-v7a\n");
+    else if (str_startswith(host_arch, "armv6"))
+        print("linux-arm32-v6\n");
+    else if (str_startswith(host_arch, "armv5"))
+        print("linux-arm32-v5\n");
+    else if (host_arch == "x86_64")
+        print("linux-64\n");
+    else if (host_arch == "i386" || host_arch == "i686")
+        print("linux-32\n");
+    else if (host_arch == "mipsel" || host_arch == "mipsle")
+        print("linux-mips32le\n");
+    else if (host_arch == "mips")
+        print("linux-mips32\n");
+    else if (host_arch == "mips64el" || host_arch == "mips64le")
+        print("linux-mips64le\n");
+    else if (host_arch == "mips64")
+        print("linux-mips64\n");
+    else if (host_arch == "riscv64")
+        print("linux-riscv64\n");
+    else if (host_arch == "loongarch64")
+        print("linux-loong64\n");
+    else if (host_arch == "s390x")
+        print("linux-s390x\n");
+    else
+        exit(1);
+}
+
+function xray_asset_url(arch_suffix) {
+    let release = object_or_empty(read_stdin_json());
+    arch_suffix = as_string(arch_suffix);
+    if (arch_suffix == "")
+        exit(1);
+
+    let expected = "Xray-" + arch_suffix + ".zip";
+    for (let asset in array_or_empty(release.assets)) {
+        if (type(asset) != "object")
+            continue;
+        if (as_string(asset.name || "") == expected) {
+            print(as_string(asset.browser_download_url || ""), "\n");
+            return;
+        }
+    }
+
+    exit(1);
+}
+
 function updates_archive_member_path(member_name) {
     member_name = as_string(member_name);
 
@@ -915,6 +993,19 @@ function sing_box_extended_release_tag() {
     }
 }
 
+function sing_box_extended_release_tags() {
+    for (let release in array_or_empty(read_stdin_json())) {
+        if (type(release) != "object")
+            continue;
+        if (release.draft === true || release.prerelease === true)
+            continue;
+        let tag = as_string(release.tag_name || "");
+        let lowered = lc(tag);
+        if (tag != "" && !str_contains(lowered, "alpha") && !str_contains(lowered, "beta") && !str_contains(lowered, "rc"))
+            print(tag, "\n");
+    }
+}
+
 function text_first_chars(value, max_chars) {
     value = as_string(value);
     max_chars = int(max_chars || "0", 10) || 0;
@@ -1193,6 +1284,12 @@ else if (mode == "updates-zip-inner-package-path")
     updates_zip_inner_package_path(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "updates-archive-member-path")
     updates_archive_member_path(ARGV[1]);
+else if (mode == "updates-zip-member-path")
+    updates_zip_member_path(ARGV[1]);
+else if (mode == "xray-arch-suffix")
+    xray_arch_suffix(ARGV[1], ARGV[2]);
+else if (mode == "xray-asset-url")
+    xray_asset_url(ARGV[1]);
 else if (mode == "updates-opkg-arch-list")
     updates_opkg_arch_list();
 else if (mode == "updates-arch-candidates")
@@ -1223,6 +1320,8 @@ else if (mode == "release-select-arch-suffix-asset")
     release_select_arch_suffix_asset(ARGV[1], ARGV[2]);
 else if (mode == "byedpi-select-asset")
     byedpi_select_asset(ARGV[1], ARGV[2], ARGV[3]);
+else if (mode == "sing-box-extended-release-tags")
+    sing_box_extended_release_tags();
 else if (mode == "sing-box-extended-release-tag")
     sing_box_extended_release_tag();
 else if (mode == "file-last-nonblank-line")

@@ -55,6 +55,19 @@ function isValidHttpUrl(url?: string) {
   return Boolean(url && /^https?:\/\/\S+$/i.test(url));
 }
 
+function renderCoreBadge(core?: Forkop.OutboundGroup['proxyCore']) {
+  const kind = core === 'xray' ? 'xray' : 'sing-box';
+
+  return E(
+    'span',
+    {
+      class: `fkp_dashboard-page__core-badge fkp_dashboard-page__core-badge--${kind}`,
+      title: _('Core'),
+    },
+    kind === 'xray' ? 'Xray' : 'sing-box',
+  );
+}
+
 function formatBytes(value?: number) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return undefined;
@@ -441,7 +454,7 @@ function renderDefaultState({
         {
           class: 'fkp_dashboard-page__outbound-section__title-section__title',
         },
-        section.displayName,
+        [section.displayName, renderCoreBadge(section.proxyCore)],
       ),
       E(
         'div',

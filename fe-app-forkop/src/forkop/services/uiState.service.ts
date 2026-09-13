@@ -30,6 +30,9 @@ function getEmptyUpdatesActions(): StoreType['updatesActions'] {
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
     byedpiRemove: { loading: false },
+    xrayCheck: { loading: false },
+    xrayInstall: { loading: false },
+    xrayRemove: { loading: false },
   };
 }
 
@@ -73,6 +76,7 @@ function applyServiceState(uiState: Forkop.UiState) {
     zapret_installed: uiState.capabilities.zapret_installed,
     zapret2_installed: uiState.capabilities.zapret2_installed,
     byedpi_installed: uiState.capabilities.byedpi_installed,
+    xray_installed: uiState.capabilities.xray_installed,
     server_inbounds_enabled_count:
       uiState.capabilities.server_inbounds_enabled_count,
   };
@@ -88,6 +92,8 @@ function applyServiceState(uiState: Forkop.UiState) {
       failed: false,
       data: {
         singbox: uiState.service.sing_box.running,
+        xray: uiState.service.xray?.running ?? 0,
+        xrayInstalled: uiState.capabilities.xray_installed ?? 0,
         forkopRunning: uiState.service.forkop.running,
         forkopEnabled: uiState.service.forkop.enabled,
         forkopStatus: uiState.service.forkop.status,

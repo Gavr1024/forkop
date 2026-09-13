@@ -74,7 +74,7 @@ export function getForkopLogNotification(
   }
 
   const update = line.match(
-    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi)\s+(\S+)/i,
+    /\[component-update\]\s+(forkop|sing_box|zapret|zapret2|byedpi|xray)\s+(\S+)/i,
   );
 
   if (!update) {

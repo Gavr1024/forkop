@@ -159,4 +159,29 @@ export const styles = `
     flex-wrap: nowrap;
     gap: 6px;
 }
+
+.fkp_updates-page__component__versions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fkp_updates-page__component__versions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.fkp_updates-page__component__versions-row select,
+.fkp_singbox-version-select,
+.fkp_xray-version-select {
+    width: 11.5em;
+    min-width: 11.5em;
+    max-width: 11.5em;
+    flex: 0 0 11.5em;
+    box-sizing: border-box;
+    pointer-events: auto;
+}
 `;

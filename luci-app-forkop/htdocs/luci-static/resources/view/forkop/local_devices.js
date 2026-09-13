@@ -183,6 +183,25 @@ function hasSingleIpValue(values) {
   );
 }
 
+function resolveLocalDeviceListValue(value) {
+  const raw = `${value || ""}`.trim();
+  if (!raw) {
+    return raw;
+  }
+  if (main.validateSubnet(raw).valid) {
+    return raw;
+  }
+
+  const choices = localDeviceChoicesCache || {};
+  const wanted = raw.toLowerCase();
+  for (const [ip, name] of Object.entries(choices)) {
+    if (`${name}`.trim().toLowerCase() === wanted) {
+      return ip;
+    }
+  }
+  return raw;
+}
+
 function preloadLocalDeviceChoicesForValues(values) {
   return hasSingleIpValue(values)
     ? loadLocalDeviceChoices()
@@ -263,6 +282,7 @@ const EntryPoint = {
   loadLocalDeviceChoices,
   normalizeOptionValues,
   preloadLocalDeviceChoicesForValues,
+  resolveLocalDeviceListValue,
 };
 
 return baseclass.extend(EntryPoint);

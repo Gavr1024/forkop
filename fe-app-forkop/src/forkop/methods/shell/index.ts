@@ -229,6 +229,8 @@ export const ForkopShellMethods = {
     callBaseMethod<Forkop.ByedpiCheckResult>(
       Forkop.AvailableMethods.CHECK_BYEDPI_RUNTIME,
     ),
+  checkXray: async () =>
+    callBaseMethod<Forkop.XrayCheckResult>(Forkop.AvailableMethods.CHECK_XRAY),
   checkInboundsConfig: async () =>
     callBaseMethod<Forkop.InboundsConfigCheckResult>(
       Forkop.AvailableMethods.CHECK_INBOUNDS_CONFIG,
@@ -268,6 +270,10 @@ export const ForkopShellMethods = {
   getByedpiStatus: async () =>
     callBaseMethod<Forkop.GetByedpiStatus>(
       Forkop.AvailableMethods.GET_BYEDPI_STATUS,
+    ),
+  getXrayStatus: async () =>
+    callBaseMethod<Forkop.XrayCheckResult>(
+      Forkop.AvailableMethods.GET_XRAY_STATUS,
     ),
   getClashApiProxies: async () =>
     callBaseMethod<ClashAPI.Proxies>(Forkop.AvailableMethods.CLASH_API, [
@@ -329,6 +335,10 @@ export const ForkopShellMethods = {
     ]),
   showSingBoxConfig: async (masked = true) =>
     callBaseMethod<unknown>(Forkop.AvailableMethods.SHOW_SING_BOX_CONFIG, [
+      masked ? 'masked' : 'raw',
+    ]),
+  showXrayConfig: async (masked = true) =>
+    callBaseMethod<unknown>(Forkop.AvailableMethods.SHOW_XRAY_CONFIG, [
       masked ? 'masked' : 'raw',
     ]),
   checkLogs: async () =>

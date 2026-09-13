@@ -21,6 +21,8 @@ const UNKNOWN_SYSTEM_INFO: StoreType['diagnosticsSystemInfo'] = {
   zapret2_installed: 0,
   byedpi_version: _('unknown'),
   byedpi_installed: 0,
+  xray_version: _('unknown'),
+  xray_installed: 0,
   server_inbounds_enabled_count: -1,
   openwrt_version: _('unknown'),
   device_model: _('unknown'),
@@ -103,6 +105,7 @@ export async function ensureSystemInfo({
         zapret_installed: latestSystemInfo.zapret_installed,
         zapret2_installed: latestSystemInfo.zapret2_installed,
         byedpi_installed: latestSystemInfo.byedpi_installed,
+        xray_installed: latestSystemInfo.xray_installed,
         server_inbounds_enabled_count:
           latestSystemInfo.server_inbounds_enabled_count,
       };

@@ -319,9 +319,17 @@ function createSettingsContent(section, capabilities) {
     return validation.valid ? true : validation.message;
   };
   o.write = function (section_id, value) {
-    const resolved = localDevices
-      .normalizeOptionValues(value)
-      .map((item) => localDevices.resolveLocalDeviceListValue(item));
+    const resolved = [];
+    const seen = {};
+    localDevices.normalizeOptionValues(value).forEach((item) => {
+      localDevices.resolveLocalDeviceListValues(item).forEach((ip) => {
+        if (!ip || seen[ip]) {
+          return;
+        }
+        seen[ip] = true;
+        resolved.push(ip);
+      });
+    });
     if (resolved.length) {
       uci.set(UCI_PACKAGE, section_id, "routing_excluded_ips", resolved);
     } else {

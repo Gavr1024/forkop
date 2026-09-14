@@ -184,22 +184,35 @@ function hasSingleIpValue(values) {
 }
 
 function resolveLocalDeviceListValue(value) {
+  const all = resolveLocalDeviceListValues(value);
+  return all.length ? all[0] : `${value || ""}`.trim();
+}
+
+function resolveLocalDeviceListValues(value) {
   const raw = `${value || ""}`.trim();
   if (!raw) {
-    return raw;
+    return [];
   }
-  if (main.validateSubnet(raw).valid) {
-    return raw;
+  if (main.validateSubnet(raw).valid && !main.validateIP(raw).valid) {
+    return [raw];
   }
 
   const choices = localDeviceChoicesCache || {};
-  const wanted = raw.toLowerCase();
-  for (const [ip, name] of Object.entries(choices)) {
-    if (`${name}`.trim().toLowerCase() === wanted) {
-      return ip;
+  if (main.validateIP(raw).valid) {
+    const name = `${choices[raw] || ""}`.trim().toLowerCase();
+    if (!name) {
+      return [raw];
     }
+    return Object.keys(choices).filter(
+      (ip) => `${choices[ip]}`.trim().toLowerCase() === name,
+    );
   }
-  return raw;
+
+  const wanted = raw.toLowerCase();
+  const ips = Object.keys(choices).filter(
+    (ip) => `${choices[ip]}`.trim().toLowerCase() === wanted,
+  );
+  return ips.length ? ips : [raw];
 }
 
 function preloadLocalDeviceChoicesForValues(values) {
@@ -283,6 +296,7 @@ const EntryPoint = {
   normalizeOptionValues,
   preloadLocalDeviceChoicesForValues,
   resolveLocalDeviceListValue,
+  resolveLocalDeviceListValues,
 };
 
 return baseclass.extend(EntryPoint);

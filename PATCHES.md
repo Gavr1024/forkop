@@ -9,9 +9,11 @@ Based on upstream https://github.com/ushan0v/forkop main (1.0.5).
 - Bypass DNS uses `evaluate` + `match_response` instead of legacy `ip_cidr`.
 - Remote rule-sets use `http_clients` / `http_client.detour` instead of `download_detour`.
 
-### Device exclusions
+### Device exclusions (`forkop-exclusions-fix-4`)
 - Settings list `routing_excluded_ips`: full Forkop bypass (nft early return + real DNS + safety route).
 - Section list `excluded_source_ips`: invert source match for that section only.
+- DNS for excluded devices goes to **bootstrap DNS**, not dnsmasq. dnsmasq is pointed at FakeIP (`127.0.0.42`), so the old path gave FakeIP and then skipped TPROXY — apps like ivi.ru failed as if they were proxied.
+- Hostname/IP in the list expands to **all** v4 and v6 addresses of that device (DHCP leases + odhcpd hosts). LuCI save does the same from host hints.
 
 ### Hostname crash fix (`forkop-exclusions-fix-3`)
 LuCI often stores a DHCP name (`motorola-edge-60-fusion`) instead of an IP.
@@ -21,7 +23,7 @@ Now:
 - IP/CIDR is validated locally (no `!obj.method()` / `|| fn()`).
 - Hostnames are resolved from `/tmp/dhcp.leases`, `/var/dhcp.leases`, `/tmp/hosts/odhcpd`, `/etc/hosts`.
 - Unresolvable names are skipped; generation does not abort.
-- Marker string in generator: `forkop-exclusions-fix-3`.
+- Marker string in generator: `forkop-exclusions-fix-4`.
 
 ### rpcd ACL
 Duplicate `/var/run/forkop/*` grants as `/tmp/run/forkop/*` for rpcd-mod-file 2026.07.19.
@@ -114,7 +116,7 @@ cp luci-app-forkop/root/usr/share/rpcd/acl.d/luci-app-forkop.json \
 chmod 0644 /usr/share/rpcd/acl.d/luci-app-forkop.json
 /etc/init.d/rpcd restart
 /etc/init.d/forkop restart
-grep -n forkop-exclusions-fix-3 /usr/lib/forkop/singbox/generator.uc
+grep -n forkop-exclusions-fix-4 /usr/lib/forkop/singbox/generator.uc
 ```
 
 The last grep must print a line. Empty output means the file was not replaced.

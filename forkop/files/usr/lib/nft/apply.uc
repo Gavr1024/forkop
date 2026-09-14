@@ -1714,48 +1714,102 @@ function apply_hostname_key(value) {
 }
 
 function apply_ip_from_lease_name(name) {
-    let wanted = apply_hostname_key(name);
-    if (wanted == "")
-        return "";
+    let ips = apply_ips_from_lease_name(name);
+    return length(ips) > 0 ? ips[0] : "";
+}
 
-    for (let path in [ "/tmp/dhcp.leases", "/var/dhcp.leases", "/tmp/run/dhcp.leases" ]) {
+function apply_lease_paths() {
+    return [
+        "/tmp/dhcp.leases",
+        "/var/dhcp.leases",
+        "/tmp/run/dhcp.leases",
+        "/tmp/hosts/odhcpd",
+        "/tmp/hosts/dhcp",
+        "/etc/hosts"
+    ];
+}
+
+function apply_note_lease_pair(ip_to_name, name_to_ips, ip, name) {
+    ip = trim(as_string(ip));
+    name = apply_hostname_key(name);
+    if (apply_is_valid_ip(ip) != true)
+        return;
+    if (name == "" || name == "*")
+        return;
+    ip_to_name[ip] = name;
+    if (type(name_to_ips[name]) != "array")
+        name_to_ips[name] = [];
+    let exists = false;
+    for (let current in name_to_ips[name])
+        if (current == ip)
+            exists = true;
+    if (!exists)
+        push(name_to_ips[name], ip);
+}
+
+function apply_build_lease_index() {
+    let ip_to_name = {};
+    let name_to_ips = {};
+    for (let path in apply_lease_paths()) {
         for (let line in split(apply_read_text(path), "\n")) {
             line = trim(replace(as_string(line), /\r/g, ""));
-            if (line == "")
-                continue;
-            let fields = split(line, /[ \t]+/);
-            if (length(fields) < 4)
-                continue;
-            if (apply_hostname_key(fields[3]) != wanted)
-                continue;
-            let ip = trim(as_string(fields[2]));
-            if (apply_is_valid_ip(ip) == true)
-                return ip;
-        }
-    }
-
-    for (let path in [ "/tmp/hosts/odhcpd", "/tmp/hosts/dhcp", "/etc/hosts" ]) {
-        for (let line in split(apply_read_text(path), "\n")) {
-            line = trim(replace(as_string(line), /\r/g, ""));
-            if (line == "")
-                continue;
-            if (substr(line, 0, 1) == "#")
+            if (line == "" || substr(line, 0, 1) == "#")
                 continue;
             let fields = split(line, /[ \t]+/);
             if (length(fields) < 2)
                 continue;
-            let ip = trim(as_string(fields[0]));
-            if (apply_is_valid_ip(ip) != true)
-                continue;
-            let i = 1;
-            while (i < length(fields)) {
-                if (apply_hostname_key(fields[i]) == wanted)
-                    return ip;
-                i++;
+            if (length(fields) >= 4 && apply_is_valid_ip(trim(as_string(fields[2]))) == true)
+                apply_note_lease_pair(ip_to_name, name_to_ips, fields[2], fields[3]);
+            if (apply_is_valid_ip(trim(as_string(fields[0]))) == true) {
+                let i = 1;
+                while (i < length(fields)) {
+                    apply_note_lease_pair(ip_to_name, name_to_ips, fields[0], fields[i]);
+                    i++;
+                }
             }
         }
     }
-    return "";
+    return { ip_to_name, name_to_ips };
+}
+
+function apply_ips_from_lease_name(name) {
+    let wanted = apply_hostname_key(name);
+    let index = apply_build_lease_index();
+    if (wanted == "" || type(index.name_to_ips[wanted]) != "array")
+        return [];
+    return index.name_to_ips[wanted];
+}
+
+function apply_expanded_source_values(value) {
+    value = trim(as_string(value));
+    let result = [];
+    let seen = {};
+    function add(ip) {
+        ip = trim(as_string(ip));
+        if (ip == "" || seen[ip])
+            return;
+        seen[ip] = true;
+        push(result, ip);
+    }
+    if (value == "")
+        return result;
+    if (apply_is_valid_ip_or_cidr(value) == true && apply_is_valid_ip(value) != true) {
+        add(value);
+        return result;
+    }
+    let index = apply_build_lease_index();
+    let name = "";
+    if (apply_is_valid_ip(value) == true) {
+        add(value);
+        name = as_string(index.ip_to_name[value] || "");
+    }
+    else {
+        name = apply_hostname_key(value);
+    }
+    if (name != "" && type(index.name_to_ips[name]) == "array")
+        for (let ip in index.name_to_ips[name])
+            add(ip);
+    return result;
 }
 
 function resolved_source_ip_values(values) {
@@ -1764,20 +1818,18 @@ function resolved_source_ip_values(values) {
     if (type(values) != "array")
         values = [];
     for (let raw in values) {
-        let value = trim(as_string(raw));
-        if (value == "")
-            continue;
-        if (apply_is_valid_ip_or_cidr(value) != true) {
-            value = apply_ip_from_lease_name(value);
-            if (value == "")
-                continue;
-            if (apply_is_valid_ip_or_cidr(value) != true)
-                continue;
+        let expanded = apply_expanded_source_values(raw);
+        if (length(expanded) == 0) {
+            let value = trim(as_string(raw));
+            if (value != "" && apply_is_valid_ip_or_cidr(value) == true)
+                push(expanded, value);
         }
-        if (seen[value])
-            continue;
-        seen[value] = true;
-        push(result, value);
+        for (let value in expanded) {
+            if (seen[value])
+                continue;
+            seen[value] = true;
+            push(result, value);
+        }
     }
     return result;
 }

@@ -6743,9 +6743,17 @@ function addLocalDeviceSubnetDynamicField(section, config) {
     return legacyText ? main.parseValueList(legacyText) : [];
   };
   o.write = function (section_id, value) {
-    const resolved = normalizeOptionValues(value).map((item) =>
-      localDevices.resolveLocalDeviceListValue(item),
-    );
+    const resolved = [];
+    const seen = {};
+    normalizeOptionValues(value).forEach((item) => {
+      localDevices.resolveLocalDeviceListValues(item).forEach((ip) => {
+        if (!ip || seen[ip]) {
+          return;
+        }
+        seen[ip] = true;
+        resolved.push(ip);
+      });
+    });
     writeListOption(section_id, config.key, resolved);
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
     uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);

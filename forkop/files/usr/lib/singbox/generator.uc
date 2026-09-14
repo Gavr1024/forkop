@@ -2810,7 +2810,7 @@ function add_domain_ip_list_ruleset(config, section_name, rule_set_tags, dns_rul
 }
 
 function exclusion_fix_marker() {
-    return "forkop-exclusions-fix-3";
+    return "forkop-exclusions-fix-4";
 }
 
 function looks_like_ipv4(value) {
@@ -2933,11 +2933,12 @@ function ip_from_hosts_line(line, wanted) {
 }
 
 function ip_from_dhcp_lease_name(name) {
-    let wanted = hostname_key(name);
-    if (wanted == "")
-        return "";
+    let ips = ips_from_dhcp_lease_name(name);
+    return length(ips) > 0 ? ips[0] : "";
+}
 
-    let paths = [
+function lease_lookup_paths() {
+    return [
         "/tmp/dhcp.leases",
         "/var/dhcp.leases",
         "/tmp/run/dhcp.leases",
@@ -2945,19 +2946,97 @@ function ip_from_dhcp_lease_name(name) {
         "/tmp/hosts/dhcp",
         "/etc/hosts"
     ];
-    for (let path in paths) {
+}
+
+function append_unique_ip(result, seen, ip) {
+    ip = trim(as_string(ip));
+    if (ip == "" || seen[ip])
+        return;
+    if (is_valid_ip(ip) != true)
+        return;
+    seen[ip] = true;
+    push(result, ip);
+}
+
+function note_lease_pair(ip_to_name, name_to_ips, ip, name) {
+    ip = trim(as_string(ip));
+    name = hostname_key(name);
+    if (is_valid_ip(ip) != true)
+        return;
+    if (name == "" || name == "*")
+        return;
+    ip_to_name[ip] = name;
+    if (type(name_to_ips[name]) != "array")
+        name_to_ips[name] = [];
+    let exists = false;
+    for (let current in name_to_ips[name])
+        if (current == ip)
+            exists = true;
+    if (!exists)
+        push(name_to_ips[name], ip);
+}
+
+function build_lease_index() {
+    let ip_to_name = {};
+    let name_to_ips = {};
+    for (let path in lease_lookup_paths()) {
         let data = read_text_if_exists(path);
         if (data == "")
             continue;
         for (let line in split(data, "\n")) {
-            let ip = ip_from_lease_line(line, wanted);
-            if (ip == "")
-                ip = ip_from_hosts_line(line, wanted);
-            if (ip != "")
-                return ip;
+            line = trim(replace(as_string(line), /\r/g, ""));
+            if (line == "" || substr(line, 0, 1) == "#")
+                continue;
+            let fields = split(line, /[ \t]+/);
+            if (length(fields) < 2)
+                continue;
+            if (length(fields) >= 4 && is_valid_ip(trim(as_string(fields[2]))) == true)
+                note_lease_pair(ip_to_name, name_to_ips, fields[2], fields[3]);
+            if (is_valid_ip(trim(as_string(fields[0]))) == true) {
+                let i = 1;
+                while (i < length(fields)) {
+                    note_lease_pair(ip_to_name, name_to_ips, fields[0], fields[i]);
+                    i++;
+                }
+            }
         }
     }
-    return "";
+    return { ip_to_name, name_to_ips };
+}
+
+function ips_from_dhcp_lease_name(name) {
+    let wanted = hostname_key(name);
+    let index = build_lease_index();
+    if (wanted == "" || type(index.name_to_ips[wanted]) != "array")
+        return [];
+    return index.name_to_ips[wanted];
+}
+
+function expanded_ips_for_source_value(value) {
+    value = trim(as_string(value));
+    let result = [];
+    let seen = {};
+    if (value == "")
+        return result;
+    if (is_valid_ip_or_cidr(value) == true && is_valid_ip(value) != true) {
+        append_unique_ip(result, seen, value);
+        if (length(result) == 0)
+            push(result, value);
+        return result;
+    }
+    let index = build_lease_index();
+    let name = "";
+    if (is_valid_ip(value) == true) {
+        append_unique_ip(result, seen, value);
+        name = as_string(index.ip_to_name[value] || "");
+    }
+    else {
+        name = hostname_key(value);
+    }
+    if (name != "" && type(index.name_to_ips[name]) == "array")
+        for (let ip in index.name_to_ips[name])
+            append_unique_ip(result, seen, ip);
+    return result;
 }
 
 function normalized_ip_or_cidr_list(values) {
@@ -2971,40 +3050,32 @@ function normalized_ip_or_cidr_list(values) {
         return result;
     }
     for (let raw in items) {
-        let value = trim(as_string(raw));
-        if (value == "")
-            continue;
-        let usable = false;
+        let expanded = [];
         try {
-            usable = is_valid_ip_or_cidr(value);
+            expanded = expanded_ips_for_source_value(raw);
         }
         catch (e) {
-            usable = false;
+            warn(exclusion_fix_marker(), " expanded_ips_for_source_value: ", e, "\n");
+            expanded = [];
         }
-        if (usable != true) {
-            let resolved = "";
-            try {
-                resolved = ip_from_dhcp_lease_name(value);
-            }
-            catch (e) {
-                resolved = "";
-            }
-            if (resolved == "")
-                continue;
-            value = resolved;
+        if (length(expanded) == 0) {
+            let value = trim(as_string(raw));
+            let usable = false;
             try {
                 usable = is_valid_ip_or_cidr(value);
             }
             catch (e) {
                 usable = false;
             }
+            if (usable == true)
+                push(expanded, value);
         }
-        if (usable != true)
-            continue;
-        if (seen[value])
-            continue;
-        seen[value] = true;
-        push(result, value);
+        for (let value in expanded) {
+            if (seen[value])
+                continue;
+            seen[value] = true;
+            push(result, value);
+        }
     }
     return result;
 }
@@ -3129,23 +3200,18 @@ function add_global_routing_exclusions(config) {
 
         config.dns.rules = prepend_item(config.dns.rules, {
             action: "route",
-            server: runtime_constants.DNSMASQ_DNS_SERVER_TAG,
+            server: runtime_constants.BOOTSTRAP_DNS_SERVER_TAG,
             inbound: source_dns_inbound_matcher(),
             source_ip_cidr: single_or_array(excluded),
-            rewrite_ttl: int_option(runtime_settings(), "dns_rewrite_ttl", "60")
+            disable_cache: true
         });
 
-        if (type(config.route) != "object")
-            config.route = {};
-        if (type(config.route.rules) != "array")
-            config.route.rules = [];
-
-        push(config.route.rules, {
+        insert_route_rules_after_system(config, [{
             action: "route",
             outbound: runtime_constants.BYPASS_OUTBOUND_TAG,
             inbound: tproxy_inbound_matcher(),
             source_ip_cidr: single_or_array(excluded)
-        });
+        }]);
     }
     catch (e) {
         warn(exclusion_fix_marker(), " add_global_routing_exclusions apply: ", e, "\n");
